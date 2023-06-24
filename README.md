@@ -38,14 +38,22 @@ $ git clone https://github.com/yunju-m/do_it_django_infleran.git
 $ cd .
 ```
 
-#### venv 가상환경 설치
+### venv 가상환경
+
+#### 가상환경 설치 및 시작
 
 ```
 $ python -m venv venv
 $ venv\Scripts\activate.bat
 ```
 
-#### django 개발환경
+#### 가상환경 종료
+
+```
+$ deactivate
+```
+
+### django 개발환경
 
 ```
 $ pip install django
@@ -94,7 +102,7 @@ INSTALLED_APPS = [
 
 ---
 
-#### django super사용자 생성
+### django super사용자 생성
 
 ```
 $ python manage.py createsuperuser
@@ -123,12 +131,38 @@ $ python manage.py makemigrations
 $ python manage.py migrate
 ```
 
-## admin 데이터베이스 확인
+### 데이터베이스(db.sqlite) 확인 방법
+
+#### admin 데이터베이스 확인
 
 admin.py에서 생성한 Post모델을 불러오고 등록하면 127.0.0.1:8000/admin에 접속했을 때 Post 모델이 나오는 것을 확인할 수 있고 등록했던 title, content을 작성할 수 있다.
 
 ```
-from .models import Post
+$ from .models import Post
+$ admin.site.register(Post)
+```
 
-admin.site.register(Post)
+#### shell 데이터베이스 확인
+
+```
+$ from blog.models import Post
+$ Post.objects.all()
+<QuerySet [<Post: [1] 첫번째 포스트>, <Post: [2] 두번째 포스트>]>
+$ Post.objects.first()
+<Post: [1] 첫번째 포스트>
+$ Post.objects.last()
+<Post: [1] 첫번째 포스트>
+
+$ p = Post.objects.last()
+$ p
+<Post: [2] 두번째 포스트>
+$ p.created_at
+datetime.datetime(2023, 6, 24, 16, 12, 47)
+$ p.updated_at
+datetime.datetime(2023, 6, 24, 16, 15, 29, 366883)
+$ p.title
+'두 번째 포스트'
+$ p.content
+'두번째 포스트를 만들어보고 문제점이 무엇인지 확인해보자'
+$ exit()
 ```
