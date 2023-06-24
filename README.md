@@ -57,6 +57,21 @@ $ python manage.py startapp blog
 $ python manage.py startapp single_pages
 ```
 
+### 새로운 앱 프로젝트 setting
+
+```
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "blog",
+    "single_pages",
+]
+```
+
 ---
 
 ## Stacks 🐈
@@ -78,3 +93,42 @@ $ python manage.py startapp single_pages
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-7952B3?style=for-the-badge&logo=Bootstrap&logoColor=white)
 
 ---
+
+#### django super사용자 생성
+
+```
+$ python manage.py createsuperuser
+$ username (leave blank to use 'saint'): yunju
+$ Email address: yunju@doitdjango.com
+$ Password:
+$ Password (again):
+Supperuser created successfully
+
+$ python manage.py runserver
+```
+
+**127.0.0.1:8000/admin/** 접속 후 생성한 username, password을 입력하면 관리자 페이지 접속 가능
+
+### model 변경 시 migrate 작업 필요
+
+1. django에게 변경사항을 알려주는 작업
+
+```
+$ python manage.py makemigrations
+```
+
+2. 변경사항을 데이터베이스에 적용
+
+```
+$ python manage.py migrate
+```
+
+## admin 데이터베이스 확인
+
+admin.py에서 생성한 Post모델을 불러오고 등록하면 127.0.0.1:8000/admin에 접속했을 때 Post 모델이 나오는 것을 확인할 수 있고 등록했던 title, content을 작성할 수 있다.
+
+```
+from .models import Post
+
+admin.site.register(Post)
+```
