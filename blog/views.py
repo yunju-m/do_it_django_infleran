@@ -14,6 +14,7 @@ def index(request):
         }
     )
 
+# 각 고유 블로그 페이지 내용 불러오기
 def single_post_page(request, pk):
     posts = Post.objects.get(pk=pk)
 
