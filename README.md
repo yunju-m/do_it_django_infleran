@@ -435,3 +435,15 @@ urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 ```html
 <img class="card-img-top" src="{{ p.head_image.url}}" alt="{{p.title}}" />
 ```
+
+5. post_detail.html에 이미지를 출력한다.
+
+- img-fluid rounded : 이미지를 꽉 채워서 둥글게 나타낸다.
+
+```html
+<img
+  class="img-fluid rounded"
+  src="{{ post.head_image.url }}"
+  alt="{{ post.title }}"
+/>
+```
