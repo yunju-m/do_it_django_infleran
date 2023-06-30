@@ -42,20 +42,20 @@ $ cd .
 
 #### 가상환경 설치 및 시작
 
-```
+```bash
 $ python -m venv venv
 $ venv\Scripts\activate.bat
 ```
 
 #### 가상환경 종료
 
-```
+```bash
 $ deactivate
 ```
 
 ### django 개발환경
 
-```
+```bash
 $ pip install django
 $ pip list
 $ django-admin startproject do_it_django_prj
@@ -67,7 +67,7 @@ $ python manage.py startapp single_pages
 
 ### 새로운 앱 프로젝트 setting
 
-```
+```python
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -104,7 +104,7 @@ INSTALLED_APPS = [
 
 ### django super사용자 생성
 
-```
+```bash
 $ python manage.py createsuperuser
 $ username (leave blank to use 'saint'): yunju
 $ Email address: yunju@doitdjango.com
@@ -121,13 +121,13 @@ $ python manage.py runserver
 
 1. django에게 변경사항을 알려주는 작업
 
-```
+```bash
 $ python manage.py makemigrations
 ```
 
 2. 변경사항을 데이터베이스에 적용
 
-```
+```bash
 $ python manage.py migrate
 ```
 
@@ -137,14 +137,14 @@ $ python manage.py migrate
 
 admin.py에서 생성한 Post모델을 불러오고 등록하면 127.0.0.1:8000/admin에 접속했을 때 Post 모델이 나오는 것을 확인할 수 있고 등록했던 title, content을 작성할 수 있다.
 
-```
+```python
 $ from .models import Post
 $ admin.site.register(Post)
 ```
 
 #### shell 데이터베이스 확인
 
-```
+```bash
 $ from blog.models import Post
 $ Post.objects.all()
 <QuerySet [<Post: [1] 첫번째 포스트>, <Post: [2] 두번째 포스트>]>
@@ -166,3 +166,228 @@ $ p.content
 '두번째 포스트를 만들어보고 문제점이 무엇인지 확인해보자'
 $ exit()
 ```
+
+### FBV(Function Based View), CBV(Class Based View)
+
+##### 1-1. FBV로 블로그 포스트 목록 페이지 만들기
+
+1. admin.py에 model의 post함수의 데이터를 사용할 수 있도록 경로를 지정합니다.
+
+```python
+from .models import Post
+
+admin.site.register(Post)
+```
+
+2. blog의 model.py에 게시물의 항목을 저장하는 변수를 선언합니다.
+
+- **제목**: title
+- **내용**: content
+- **작성자**: author
+- **작성시간**(새로 만들어질 때 자동으로 업데이트): created_at
+- **이미 존재하는 시간에 대한 변경내용 적용**: updated_at
+
+**🕓 한국(서울) 기준으로 시간을 맞추려면?**
+django 프로젝트 파일의 setting.py 다음 내용을 변경합니다.
+TIME_ZONE = "UTC" ➡ "Asia/Seoul"
+USE_TZ = True ➡ False
+
+- <h5>def__str__(self)</h5>: django admin의 게시물 이름 지정
+
+```python
+class Post(models.Model):
+    title = models.CharField(max_length=50) # 제목
+    content = models.TextField()            # 내용
+
+    created_at = models.DateTimeField(auto_now_add=True)    # 작성 시간(새로 만들어질 때 자동으로 업데이트)
+    updated_at = models.DateTimeField(auto_now=True)        # 이미 존재하는 시간에 대해 변경내용 적용
+    # author: 추후 작성 예정                # 작성자
+
+    ## django admin의 게시물 이름 설정
+    def __str__(self):
+        return f'[{self.pk}] {self.title}'
+```
+
+3. do_it_django_prj의 url.py에 blog경로를 지정합니다.
+
+```python
+urlpatterns = [
+    path("blog/", include('blog.urls')),
+    path("admin/", admin.site.urls),
+]
+```
+
+4. localhost:8000/blog에 접속하면 views.py에서 실행할 함수 경로를 지정합니다.
+
+```python
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.index),
+]
+```
+
+5. views.py에서 실행시킬 함수(index)를 선언합니다.
+   render안에는 기본 **request**가 존재하고 **index.html를 반환**하여 화면에 나타냅니다.
+   'post'는 model.py의 post함수의 총 데이터를 의미합니다.
+   **.order_by('-pk')**: 기본키(pk)에 대해 최근 업데이트한 순서대로 정렬
+
+```python
+from django.shortcuts import render
+from .models import Post
+
+def index(request):
+    posts = Post.objects.all().order_by('-pk')
+
+    return render(
+        request,
+        'blog/index.html',
+        {
+            'posts': posts,
+        }
+    )
+```
+
+6. index.html에서 post모델의 데이터를 출력합니다.
+
+```html
+{% for p in posts %}
+<hr />
+<h3>{{ p.title }}</h3>
+<h4>{{ p.created_at }}</h4>
+<p>{{ p.content}}</p>
+{% endfor%}
+```
+
+</br>
+
+##### 1-2. FBV로 블로그 포스트 상세 페이지 만들기
+
+**localhost:8000/blog/1**처럼 blog뒤에 게시물 pk가 오면 해당 게시물의 내용을 불러오는 상세 게시물 리스트 페이지를 만드는 방법은 다음과 같습니다.
+
+1. urls.py에 blog/pk값 인 경로가 오면 실행되는 함수(single_post_page)를 선언합니다.
+
+```python
+urlpatterns = [
+    path('<int:pk>/', views.single_post_page),
+    path('', views.index),
+]
+```
+
+2. views.py에 single_post_page 함수를 생성합니다.
+
+- pk(기본키)를 인수로 받아 해당 pk가 동일한 Post.object를 posts라고 선언합니다.
+- single_page.html에 posts를 'post'라는 이름으로 전달합니다.
+
+```python
+def single_post_page(request, pk):
+    posts = Post.objects.get(pk=pk)
+
+    return render(
+        request,
+        'blog/single_page.html',
+        {
+            'post': posts,
+        }
+    )
+```
+
+3. singe_page.html에 원하는 post 내역을 출력합니다.
+
+```html
+<a href="/blog/">Blog</a>
+    </nav>
+    <h1>{{ post.title }}</h1>
+    <h4>{{ post.created_at }}</h4>
+    <p>{{ post.content }}</p>
+```
+
+4. index.html에 post의 전체 내용을 반복문을 통해 출력합니다.
+
+- 해당 게시물을 클릭하면 해당 게시물의 상세 리스트 페이지로 이동하는 함수 get_absolute_url을 호출합니다.
+
+```html
+{% for p in posts %}
+<hr />
+<h3>{{ p.title }}</h3>
+<h3><a href="{{ p.get_absolute_url }}">{{ p.title }}</a></h3>
+<h4>{{ p.created_at }}</h4>
+<p>{{ p.content}}</p>
+{% endfor%}
+```
+
+5. models.py에 get_absolute_url 함수를 선언합니다.
+
+```python
+def get_absolute_url(self):
+    return f'/blog/{self.pk}/'
+```
+
+<br/>
+
+##### 2-1. CBV로 블로그 포스트 목록 페이지 만들기
+
+1. urls.py의 views.index ➡ views.PostList.as_view()
+
+- as_view()를 마지막에 적어주는 것은 약속.
+
+```python
+urlpatterns = [
+    path('<int:pk>/', views.single_post_page),
+    path('', views.PostList.as_view()),
+]
+```
+
+2. djago에서 제공하는 목록 리스트 항목을 출력하는 ListView 사용합니다.
+
+- **model = Post**라고 이전의 지정.
+- 최근 순으로 정렬: **ordering = '-pk'**
+- ListView는 기본 post_list로 데이터를 저장하므로 경로를 변경하기위해서는 **template_name**사용
+  혹은 index.html ➡ post_list.html 변경
+
+```python
+from django.shortcuts import render
+from django.views.generic import ListView
+from .models import Post
+
+class PostList(ListView):
+    model = Post
+    template_name = 'blog/index.html'
+    ordering = '-pk'
+```
+
+3. post_list.html에 post_list값 모두 출력
+
+```html
+{% for p in post_list %}
+<hr />
+<h3><a href="{{ p.get_absolute_url }}">{{ p.title }}</a></h3>
+<h4>{{ p.created_at }}</h4>
+```
+
+</br>
+
+##### 2-2. CBV로 블로그 포스트 상세 페이지 만들기
+
+1. urls.py의 views.single_post_page ➡ views.PostDetail.as_view()
+
+```python
+urlpatterns = [
+    path('<int:pk>/', views.PostDetail.as_view()),
+    path('', views.PostList.as_view()),
+]
+```
+
+2. djago에서 제공하는 상세 리스트 항목을 출력하는 DetailView를 사용합니다.
+
+- **model = Post**라고 이전의 지정.
+- ListView는 기본 post_detail로 데이터를 저장하므로 경로를 변경하기위해서는 **template_name**사용
+  혹은 single_page_post.html ➡ post_detail.html 변경
+
+```python
+class PostDetail(DetailView):
+    model = Post
+```
+
+3. post_detail.html에 원하는 post 데이터 항목 출력
