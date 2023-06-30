@@ -467,3 +467,50 @@ $ python manage.py migrate
 
 3. /admin에 들어가서 Post 모델에 file upload창이 추가된 것을 확인할 수 있다. <br/>
    여기에 testfile.txt를 업로드하면 media/blog에 새로운 폴더 files가 생성되고 그안에 업로드한 testfile.txt이 생성된 것을 확인할 수 있다.
+
+<br/>
+
+### template tags & 조건문
+
+#### 1. 템플릿에 조건문 사용
+
+##### if문으로 이미지가 없는 경우 처리하기
+
+1. post_list.html
+
+```html
+{% if p.head_image %}
+<img class="card-img-top" src="{{ p.head_image.url}}" alt="{{p.title}}" />
+{%else %}
+<img
+  class="card-img-top"
+  src="https://picsum.photos/seed/{{p.id}}/600/200"
+  alt="{{p.title}}"
+/>
+{% endif %}
+```
+
+- lorem ipsum 사이트 : 긴 글문 예시 사이트
+  영문 버전 : https://www.lipsum.com/
+  한글 버전 : http://guny.kr/stuff/klorem/
+- [lorem picsum 사이트](https://picsum.photos/) : 랜덤 이미지 제공 사이트
+<p>picsum.photos를 갖는 이미지가 여러개인 경우 중복된 이미지가 출력되는 문제 발생❗❗</p>
+<p>id값 or seed를 지정하여 이미지 구분 (id는 충돌 가능성 있으므로 seed추천)</p>
+
+2. post_detail.html
+
+```html
+{% if post.head_image %}
+<img
+  class="img-fluid rounded"
+  src="{{ post.head_image.url }}"
+  alt="{{ post.title }}"
+/>
+{% else %}
+<img
+  class="card-img-top"
+  src="https://picsum.photos/seed/{{p.id}}/600/200"
+  alt="{{post.title}}"
+/>
+{%endif%}
+```
