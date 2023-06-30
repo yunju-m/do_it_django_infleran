@@ -12,3 +12,6 @@ class Post(models.Model):
     ## django admin의 게시물 이름 설정
     def __str__(self):
         return f'[{self.pk}] {self.title}'
+    
+    def get_absolute_url(self):
+        return f'/blog/{self.pk}/'
