@@ -102,6 +102,8 @@ INSTALLED_APPS = [
 
 ---
 
+## django project 기능 구현
+
 ### django super사용자 생성
 
 ```bash
@@ -117,7 +119,7 @@ $ python manage.py runserver
 
 **127.0.0.1:8000/admin/** 접속 후 생성한 username, password을 입력하면 관리자 페이지 접속 가능
 
-### model 변경 시 migrate 작업 필요
+### model 변경 시 makemigrations, migrate
 
 1. django에게 변경사항을 알려주는 작업
 
@@ -169,7 +171,7 @@ $ exit()
 
 ### FBV(Function Based View), CBV(Class Based View)
 
-##### 1-1. FBV로 블로그 포스트 목록 페이지 만들기
+#### 1-1. FBV로 블로그 포스트 목록 페이지 만들기
 
 1. admin.py에 model의 post함수의 데이터를 사용할 수 있도록 경로를 지정합니다.
 
@@ -187,21 +189,22 @@ admin.site.register(Post)
 - **작성시간**(새로 만들어질 때 자동으로 업데이트): created_at
 - **이미 존재하는 시간에 대한 변경내용 적용**: updated_at
 
-**🕓 한국(서울) 기준으로 시간을 맞추려면?**
-django 프로젝트 파일의 setting.py 다음 내용을 변경합니다.
-TIME_ZONE = "UTC" ➡ "Asia/Seoul"
+**🕓 한국(서울) 기준으로 시간을 맞추려면?** </br>
+
+<p>django 프로젝트 파일의 setting.py 다음 내용을 변경합니다.</p>
+TIME_ZONE = "UTC" ➡ "Asia/Seoul" </br>
 USE_TZ = True ➡ False
 
-- <h5>def__str__(self)</h5>: django admin의 게시물 이름 지정
+- <p>def__str__(self)</p>: django admin의 게시물 이름 지정
 
 ```python
 class Post(models.Model):
-    title = models.CharField(max_length=50) # 제목
-    content = models.TextField()            # 내용
+    title = models.CharField(max_length=50)
+    content = models.TextField()
 
-    created_at = models.DateTimeField(auto_now_add=True)    # 작성 시간(새로 만들어질 때 자동으로 업데이트)
-    updated_at = models.DateTimeField(auto_now=True)        # 이미 존재하는 시간에 대해 변경내용 적용
-    # author: 추후 작성 예정                # 작성자
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    # author: 추후 작성 예정
 
     ## django admin의 게시물 이름 설정
     def __str__(self):
@@ -262,7 +265,7 @@ def index(request):
 
 </br>
 
-##### 1-2. FBV로 블로그 포스트 상세 페이지 만들기
+#### 1-2. FBV로 블로그 포스트 상세 페이지 만들기
 
 **localhost:8000/blog/1**처럼 blog뒤에 게시물 pk가 오면 해당 게시물의 내용을 불러오는 상세 게시물 리스트 페이지를 만드는 방법은 다음과 같습니다.
 
@@ -326,7 +329,7 @@ def get_absolute_url(self):
 
 <br/>
 
-##### 2-1. CBV로 블로그 포스트 목록 페이지 만들기
+#### 2-1. CBV로 블로그 포스트 목록 페이지 만들기
 
 1. urls.py의 views.index ➡ views.PostList.as_view()
 
@@ -368,7 +371,7 @@ class PostList(ListView):
 
 </br>
 
-##### 2-2. CBV로 블로그 포스트 상세 페이지 만들기
+#### 2-2. CBV로 블로그 포스트 상세 페이지 만들기
 
 1. urls.py의 views.single_post_page ➡ views.PostDetail.as_view()
 
@@ -391,3 +394,44 @@ class PostDetail(DetailView):
 ```
 
 3. post_detail.html에 원하는 post 데이터 항목 출력
+
+<br/>
+
+### 미디어 파일 관리하기 - 이미지 파일 업로드
+
+1. django project의 setting.py에서 MEDIA_URL, MEDIA_ROOT를 지정
+
+- **MEDIA_URL**: 미디어 파일 제공 url 지정
+- **MEDIA_ROOT**: 미디어 파일 저장 경로
+
+```python
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, '_media')
+```
+
+2. models.py의 Post함수에 이미지 파일 변수 선언
+
+- **blank=True**: 이미지가 존재하지 않아도 게시물 생성 허용
+- 한 폴더안에 수많은 파일이 존재하면 모두 검색하는데 시간이 오래걸리고 느려지므로 생성날짜가 포함된 경로로 지정
+
+```python
+head_image = models.ImageField(upload_to='blog/images/%Y/%m/%d/', blank=True)
+```
+
+3. django project의 setting.py에서 MEDIA_URL, MEDIA_ROOT의 경로를 지정해준다.
+
+```python
+
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+
+4. post_list.html에 이미지를 출력해준다.
+
+- **alt**: 이미지가 나오지않는 경우 출력하는 문장
+
+```html
+<img class="card-img-top" src="{{ p.head_image.url}}" alt="{{p.title}}" />
+```
