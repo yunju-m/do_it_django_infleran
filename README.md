@@ -397,7 +397,9 @@ class PostDetail(DetailView):
 
 <br/>
 
-### 미디어 파일 관리하기 - 이미지 파일 업로드
+### 미디어 파일 관리하기
+
+#### 이미지 파일 업로드
 
 1. django project의 setting.py에서 MEDIA_URL, MEDIA_ROOT를 지정
 
@@ -409,7 +411,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, '_media')
 ```
 
-2. models.py의 Post함수에 이미지 파일 변수 선언
+2. blog models.py의 Post함수에 이미지 파일 변수 선언
 
 - **blank=True**: 이미지가 존재하지 않아도 게시물 생성 허용
 - 한 폴더안에 수많은 파일이 존재하면 모두 검색하는데 시간이 오래걸리고 느려지므로 생성날짜가 포함된 경로로 지정
@@ -447,3 +449,21 @@ urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
   alt="{{ post.title }}"
 />
 ```
+
+#### 파일 업로드를 위한 FileField
+
+1. blog models.py의 Post함수에 파일 업로드 변수 선언
+
+```python
+    file_upload = models.FileField(upload_to='blog/files/%Y/%m/%d/', blank=True)
+```
+
+2. makemigration, migrate 작업 수행
+
+```shell
+$ python manage.py makemigrations
+$ python manage.py migrate
+```
+
+3. /admin에 들어가서 Post 모델에 file upload창이 추가된 것을 확인할 수 있다. <br/>
+   여기에 testfile.txt를 업로드하면 media/blog에 새로운 폴더 files가 생성되고 그안에 업로드한 testfile.txt이 생성된 것을 확인할 수 있다.
