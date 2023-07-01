@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 import os
 
 class Post(models.Model):
@@ -11,11 +12,12 @@ class Post(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)  
     updated_at = models.DateTimeField(auto_now=True)        
-    # author: 추후 작성 예정                
+    
+    author = models.ForeignKey(User, on_delete=models.CASCADE)        
 
     ## django admin의 게시물 이름 설정
     def __str__(self):
-        return f'[{self.pk}] {self.title}'
+        return f'[{self.pk}] {self.title} :: {self.author}'
     
     # 상세페이지 url
     def get_absolute_url(self):
