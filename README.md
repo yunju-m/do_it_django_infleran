@@ -626,7 +626,7 @@ $ pip install beautifulsoup4
 
 #### 테스트 코드 만들기
 ##### 1. 블로그 목록 페이지에 대한 테스트 코드
-1. blog 앱 폴더의 tests.py에서 테스트 케이스 생성
+blog 앱 폴더의 tests.py에서 테스트 케이스 생성
 1-1. 포스트 목록 페이지(post list)을 연다.
 - Client() : 웹 사이트 방문자의 브라우저
 
@@ -694,3 +694,46 @@ self.assertIn(post_001.title, main_area.text)
 self.assertIn(post_002.title, main_area.text)
 ```
 3-4, "아직 게시물이 없습니다"라는 문구가 없어진다.
+
+<br>
+
+##### 2. 블로그 상세 페이지에 대한 테스트 코드
+1-1. 포스트가 하나 있다.
+```python
+post_001 = Post.objects.create(
+    title = "첫 번째 포스트 입니다.",
+    content = "Hello World! We are the World",
+)
+self.assertEqual(Post.objects.count(), 1)
+```
+1-2. 그 포스트의 url은 '/blog/1/'이다.
+```python
+self.assertEqual(post_001.get_absolute_url(), '/blog/1/')
+```
+2-1. 그 포스트의 url로 접근하면 정상적으로 작동한다.(status_code: 200)
+```python
+response = self.client.get(post_001.get_absolute_url())
+self.assertEqual(response.status_code, 200)
+```
+2-2. 포스트 목록 페이지와 똑같은 내비게이션 바가 있다.
+```python
+soup = BeautifulSoup(response.content, 'html.parser')
+navbar = soup.nav
+self.assertIn('Blog', navbar.text)
+self.assertIn('About me', navbar.text)
+```
+2-3. 첫 번째 포스트의 목록이 웹 브라우저 웹 타이틀에 들어있다.
+```python
+self.assertIn(post_001.title, soup.title)
+```
+2-4. 첫 번째 포스트의 제목이 포스트 영역에 있다.
+```python
+main_area = soup.find('div', id='main-area')
+post_area = main_area.find('div', id='post-area')
+self.assertIn(post_001.title, post_area.text)
+```
+2-5. 첫 번째 포스트의 작성자(author)가 포스트 영역에 있다. (아직 구현 불가능)
+2-6. 첫 번쩨 포스트의 내용(content)가 포스트 영역에 있다.
+```python
+self.assertIn(post_001.content, post_area.text)
+```
