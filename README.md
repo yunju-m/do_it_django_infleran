@@ -515,8 +515,6 @@ $ python manage.py migrate
 {%endif%}
 ```
 
-<br/>
-
 ##### (2) 첨부파일 다운로드 버튼 생성하기
 
 1. post_detail.html
@@ -610,3 +608,89 @@ $ python manage.py migrate
     <h5 class="text-muted">{{p.hook_text}}</h5>
 {%endif%}
 ``` 
+<br>
+
+### TDD 테스트 주도 개발
+#### TDD (Test Driven Development)란?
+1. 구성
+테스트 코드 작성 ➡ 기능 구현 ➡ 리팩토링
+
+2. Beautifulsoup4 설치
+- 브라우저에 구현한 내용이 제대로 표현되었는지 확인하기 위한 라이브러리
+- 웹 크롤링 할 때 사용
+```shell
+$ pip install beautifulsoup4
+```
+
+<br>
+
+#### 테스트 코드 만들기
+##### 1. 블로그 목록 페이지에 대한 테스트 코드
+1. blog 앱 폴더의 tests.py에서 테스트 케이스 생성
+1-1. 포스트 목록 페이지(post list)을 연다.
+- Client() : 웹 사이트 방문자의 브라우저
+
+```python
+class TestView(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+response = self.client.get('/blog/')
+```
+1-2. 정상적으로 페이지가 로드된다.
+```python
+self.assertEqual(response.status_code, 200)
+```
+1-3. 페이지의 타이틀에 Blog라는 문구가 있다.
+```python
+soup = BeautifulSoup(response.content, 'html.parser')
+self.assertIn('Blog',soup.title.text)
+```
+1-4. 상단에 NavBar가 있다.
+```python
+navbar = soup.nav
+```
+1-5. Blog, About me라는 문구가 Navbar에 있다.
+```python
+self.assertIn('Blog', navbar.text)
+self.assertIn('Blog', navbar.text)
+```
+<br>
+2-1. 게시물이 하나도 없을 때
+
+```python
+self.assertIn(Post.objects.count(), 0)
+```
+2-2. 메인 영역에 "아직 게시물이 없습니다."라는 문구가 나온다.
+```python
+main_area = soup.find('div', id='main-area')
+self.assertIn('아직 게시물이 없습니다.', main_area.text)
+```
+
+<br>
+
+3-1. 만약 게시물이 2개 있다면
+```python
+post_001 = Post.objects.create(
+    title = "첫 번째 포스트 입니다.",
+    content = "Hello World! We are the World",
+)
+        
+post_002 = Post.objects.create(
+    title = "두 번째 포스트 입니다.",
+    content = "저는 마라탕과 떡볶이를 사랑합니다",
+)
+```
+3-2. 포스트 목록 페이지를 새로 고침 했을 때
+```python
+self.assertEqual(Post.objects.count(), 2)
+response =self.client.get('/blog/')
+```
+3-3. 메인 영역에 포스트 2개의 타이틀이 존재한다.
+```python
+soup = BeautifulSoup(response.content, 'html.parser')
+main_area = soup.find('div', id='main-area')
+self.assertIn(post_001.title, main_area.text)
+self.assertIn(post_002.title, main_area.text)
+```
+3-4, "아직 게시물이 없습니다"라는 문구가 없어진다.
