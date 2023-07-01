@@ -1,11 +1,19 @@
 from django.test import TestCase, Client
 from bs4 import BeautifulSoup
 from .models import Post
-
+from django.contrib.auth.models import User
 
 class TestView(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user_yunju = User.objects.create_user(
+            username='yunju',
+            password='0129'
+        )
+        self.user_subin = User.objects.create_user(
+            username='subin',
+            password='0313'
+        )
     
     def navbar_test(self, soup):
         navbar = soup.nav
@@ -35,15 +43,18 @@ class TestView(TestCase):
         self.assertEqual(Post.objects.count(), 0)
         main_area = soup.find('div', id='main-area')
         self.assertIn('아직 게시물이 없습니다.', main_area.text)
+        
 
         post_001 = Post.objects.create(
             title = "첫 번째 포스트 입니다.",
             content = "Hello World! We are the World",
+            author=self.user_yunju
         )
         
         post_002 = Post.objects.create(
             title = "두 번째 포스트 입니다.",
             content = "저는 마라탕과 떡볶이를 사랑합니다",
+            author=self.user_subin
         )
 
         self.assertEqual(Post.objects.count(), 2)
@@ -54,10 +65,14 @@ class TestView(TestCase):
         self.assertIn(post_001.title, main_area.text)
         self.assertIn(post_002.title, main_area.text)
 
+        self.assertIn(post_001.author.username.upper(), main_area.text)
+        self.assertIn(post_002.author.username.upper(), main_area.text)
+
     def test_post_detail(self):
         post_001 = Post.objects.create(
             title = "첫 번째 포스트 입니다.",
             content = "Hello World! We are the World",
+            author = self.user_yunju
         )
         self.assertEqual(Post.objects.count(), 1)
 
@@ -75,4 +90,5 @@ class TestView(TestCase):
         post_area = main_area.find('div', id='post-area')
         
         self.assertIn(post_001.title, post_area.text)
+        self.assertIn(self.user_yunju.username.upper(), post_area.text)
         self.assertIn(post_001.content, post_area.text)

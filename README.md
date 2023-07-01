@@ -732,7 +732,9 @@ main_area = soup.find('div', id='main-area')
 post_area = main_area.find('div', id='post-area')
 self.assertIn(post_001.title, post_area.text)
 ```
-2-5. 첫 번째 포스트의 작성자(author)가 포스트 영역에 있다. (아직 구현 불가능)
+2-5. 첫 번째 포스트의 작성자(author)가 포스트 영역에 있다.
+[포스트 상세 페이지 작성자 추가하기](#포스트-상세-페이지-작성자author) 
+
 2-6. 첫 번쩨 포스트의 내용(content)가 포스트 영역에 있다.
 ```python
 self.assertIn(post_001.content, post_area.text)
@@ -778,7 +780,7 @@ self.assertIn(post_001.content, post_area.text)
 
 #### 2. include - 네비게이션바, footer 모듈화하기
 1. 중복 네비게이션바 테스트에 대해 navbar_test 함수 생성한다.
-- test가 먼저 나오는 이름을 가진 함수로 시작하면 하나의 유닛으로 인식한다.
+- **test_가 먼저 나오는 이름을 가진 함수로 시작하면 하나의 TestCase(유닛테스트)로 인식한다.**
 ```python
 def navbar_test(self, soup):
     navbar = soup.nav
@@ -840,4 +842,69 @@ author = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
 
 2. /admin/에서 user에서 새로운 사용자를 생성한 후 해당 post에 대해 author 지정이 가능하다. 
 - CASCADE인 경우: user를 삭제하면 해당 post글도 자동으로 삭제되는 것을 확인할 수 있다.
-- SET_NULL인 경우: uesr를 삭제해도 해당 post글은 유지되는 것을 알 수 있다.
+- SET_NULL인 경우: uesr를 삭제해도 해당 post글은 유지되는 것을 알 수 있다. (해당 글에 대해서 author는 **None**이 된다.)
+
+#### 포스트 목록, 포스트 상세 페이지에 작성자 정보 출력하기
+- blog앱의 tests.py의 setUp 함수에 user계정을 생성한다.
+- test를 실행할 때 초반에 user가 2명있다고 인식하게된다.
+```python
+self.user_trump = User.objects.create_user(
+    username='yunju',
+    password='0129',
+)
+self.user_trump = User.objects.create_user(
+    username='subin',
+    password='0313',
+)
+```
+##### 포스트 목록 페이지 작성자(author)
+1. test_post_list 함수의 각 post_001, post_002에 author을 지정해준다.
+```python
+post_001 = Post.objects.create(
+    title = "첫 번째 포스트 입니다.",
+    content = "Hello World! We are the World",
+    author=self.user_yunju
+)
+        
+post_002 = Post.objects.create(
+    title = "두 번째 포스트 입니다.",
+    content = "저는 마라탕과 떡볶이를 사랑합니다",
+    author=self.user_subin
+)
+```
+
+2. 게시글에 작성자 명을 추가해주기 위해 test_post_list에 다음 코드를 추가한다.
+```python
+self.assertIn(post_001.author.username.upper(), main_area.text)
+self.assertIn(post_002.author.username.upper(), main_area.text)
+```
+
+3. post_list.html에 개발자명에 해당 부분을 다음으로 수정한다.
+- upper: 대문자로 표현
+```html
+<a href="#">{{ p.author | upper }}</a>
+```
+
+#### 포스트 상세 페이지 작성자(author)
+1. test_post_detail 함수의 post_001에 author를 추가한다.
+```python
+post_001 = Post.objects.create(
+    title = "첫 번째 포스트 입니다.",
+    content = "Hello World! We are the World",
+    author = self.user_yunju
+)
+```
+
+2. 첫 번째 포스트의 작성자(author)가 포스트 영역에 표시한다.
+```python
+self.assertIn(self.user_yunju.username.upper(), post_area.text)
+```
+
+3.  post_detail.html에 개발자명에 해당 부분을 다음으로 수정한다.
+```html
+<!-- Author -->
+<p class="lead">
+by
+<a href="#">{{ post.author | upper }}</a>
+</p>
+```
