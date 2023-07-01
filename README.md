@@ -825,12 +825,19 @@ def navbar_test(self, soup):
 ### 다대일 관계
 #### 작성자(author) 생성하기
 1. blog 앱의 models.py에 author 추가하기
-- CASCADE: user가 탈퇴하면 해당 user의 게시글도 삭제(외래키참조 삭제)
+- **CASCADE**: user가 탈퇴하면 해당 user의 게시글도 삭제(외래키참조 삭제)
+- **SET_NULL**: user가 탈퇴해도 해당 user의 게시글은 유지된다.
+이때, **null=True**로 지정해줘야 한다.
 ```python
 from django.contrib.auth.models import User
 
+1. CASCADE인 경우
 author = models.ForeignKey(User, on_delete=models.CASCADE)
+
+2. SET_NULL인 경우
+author = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)  
 ```
 
 2. /admin/에서 user에서 새로운 사용자를 생성한 후 해당 post에 대해 author 지정이 가능하다. 
-- user를 삭제하면 해당 post글도 자동으로 삭제되는 것을 확인할 수 있다.
+- CASCADE인 경우: user를 삭제하면 해당 post글도 자동으로 삭제되는 것을 확인할 수 있다.
+- SET_NULL인 경우: uesr를 삭제해도 해당 post글은 유지되는 것을 알 수 있다.
