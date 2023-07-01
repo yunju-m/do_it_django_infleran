@@ -11,7 +11,8 @@ Do It 장고 + 부트스트랩
 
 # Do It Django Infleran 강의
 
-> **강의 사이트 : [https://www.inflearn.com/course/%EB%91%90%EC%9E%87-%ED%8C%8C%EC%9D%B4%EC%8D%AC-%EC%9B%B9%EA%B0%9C%EB%B0%9C] ** <br/> **개발기간: 2023.06.21 ~ 2022.06.~ **
+>**[강의 사이트](https://www.inflearn.com/course/%EB%91%90%EC%9E%87-%ED%8C%8C%EC%9D%B4%EC%8D%AC-%EC%9B%B9%EA%B0%9C%EB%B0%9C)** : Do It 장고 + 부트스트랩: 파이썬 웹 개발
+**개발기간: 2023.06.21 ~ 2022.06.~**
 
 ## 프로젝트 소개
 
@@ -732,7 +733,7 @@ main_area = soup.find('div', id='main-area')
 post_area = main_area.find('div', id='post-area')
 self.assertIn(post_001.title, post_area.text)
 ```
-2-5. 첫 번째 포스트의 작성자(author)가 포스트 영역에 있다.
+2-5. 첫 번째 포스트의 작성자(author)가 포스트 영역에 있다. <br>
 [포스트 상세 페이지 작성자 추가하기](#포스트-상세-페이지-작성자author) 
 
 2-6. 첫 번쩨 포스트의 내용(content)가 포스트 영역에 있다.
@@ -885,7 +886,7 @@ self.assertIn(post_002.author.username.upper(), main_area.text)
 <a href="#">{{ p.author | upper }}</a>
 ```
 
-#### 포스트 상세 페이지 작성자(author)
+##### 포스트 상세 페이지 작성자(author)
 1. test_post_detail 함수의 post_001에 author를 추가한다.
 ```python
 post_001 = Post.objects.create(
@@ -908,3 +909,53 @@ by
 <a href="#">{{ post.author | upper }}</a>
 </p>
 ```
+<br>
+
+#### Category 생성하기
+1. blog앱의 models.py에 Category class를 생성한다.
+- name: 카테고리 이름, 중복x
+- slug: 카테고리 클릭 시 url 뒤에 카테고리 이름이 붙어서 읽을 수 있게 한다.
+ex, food 카테고리를 클릭한 경우
+localhost:8000/blog/food/
+    - allow_unicode: 한글 지원
+    - self.name을 반환받는 함수 지정
+```python
+class Category(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=200, unique=True, allow_unicode=True)
+
+    def __str__(self):
+        return self.name
+```
+
+2. Post 모델에 카테고리 추가한다.
+```python
+category = models.ForeignKey(Category, null=True, on_delete=models.SET_NULL)
+```
+
+3. makemigrations, migrate 작업 수행한다.
+```shell
+$ python manage.py makemigrations
+$ python manage.py migrate
+```
+4. admins.py에 Category를 추가해준다.
+- Category의 name을 입력하면 자동으로 slug에도 입력되도록 설정한다.
+```python
+from .models import Category
+
+class CategoryAdmin(admin.ModelAdmin):
+    prepopulated_fields = {'slug': ('name',)}
+
+admin.site.register(Category, CategoryAdmin)
+
+```
+
+5. /admin의 Category 이름을 변경하기 위해 models.py에 다음을 추가해준다.
+```python
+class Meta:
+    verbose_name_plural = 'Categories'
+```
+
+| blank=True | null=True |
+| :--------: | :-------: |
+| 사용자가 form을 입력할 때 필수사항이 모두 포함되어 있는지 판단 <br> 삭제되거나 수정, 탈퇴에 영향x | 데이터베이스의 필수사항을 결정 <br> 삭제, 수정에 영향o, 운영방침을 정한다. | 
