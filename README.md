@@ -737,3 +737,40 @@ self.assertIn(post_001.title, post_area.text)
 ```python
 self.assertIn(post_001.content, post_area.text)
 ```
+
+<br>
+
+#### 템플릿 파일 모듈화 하기
+##### 1. extends - 화면 메인 영역 모듈화하기
+1. base.html 생성
+- post_list.html와 post_detail.html을 모듈화하는 html
+- post_list.html 복사
+
+2. post_list.html 
+- base.html에 main-area부분에 넣기위해 상단에 다음과 같은 코드를 추가한다.
+```html
+{% extends 'blog/base.html' %}
+```
+- base.html의 main-area에 넣을 코드를 block사이에 넣어준다.
+```html
+{% block main_area %}
+{% endblock %}
+```
+
+3. post_detail.html
+- base.html에 main-area부분에 넣기위해 상단에 다음과 같은 코드를 추가한다.
+```html
+{% extends 'blog/base.html' %}
+```
+- 해당 게시물을 클릭하면 게시물 제목으로 변경되도록 한다.
+```html
+{% block head_title %}
+  {{ post.title }}
+  | Blog
+{% endblock %}
+```
+- base.html의 main-area에 넣을 코드를 block사이에 넣어준다.
+```html
+{% block main_area %}
+{% endblock %}
+```
