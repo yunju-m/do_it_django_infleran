@@ -474,7 +474,7 @@ $ python manage.py migrate
 
 #### 1. 템플릿에 조건문 사용
 
-##### if문으로 이미지가 없는 경우 처리하기
+##### (1) if문으로 이미지가 없는 경우 처리하기
 
 1. post_list.html
 
@@ -517,7 +517,7 @@ $ python manage.py migrate
 
 <br/>
 
-##### 1. 첨부파일 다운로드 버튼 생성하기
+##### (2) 첨부파일 다운로드 버튼 생성하기
 
 1. post_detail.html
 
@@ -534,7 +534,7 @@ $ python manage.py migrate
 {%endif%}
 ```
 
-##### 2. 첨부파일 종류별로 아이콘 나타내기
+##### (3) 첨부파일 종류별로 아이콘 나타내기
 
 1. blog models.py에서 확장자를 알기 위해 파일 이름을 가져오는 함수를 생성한다.
 
@@ -573,3 +573,40 @@ def get_file_ext(self):
     {{ post.get_file_name }}</a>
 {%endif%}
 ```
+<br>
+
+#### 2. template tags 사용하여 미리보기 생성
+**truncatechars & truncatewords**
+1. post_list.html truncatewords 추가
+- 지정크기만큼 글자수 출력
+```html
+<p class="card-text">{{p.content | truncatewords:45}}</p>
+```
+<span style="color:red">
+truncatedword: 45와 같이 띄어쓰기x
+</span>
+
+<br>
+
+#### 3. 요약문 추가하기
+1. blog models.py에 요약문 변수를 생성한다.
+```python
+hook_text = models.CharField(max_length=100, blank=True)
+```
+
+2. makemigraions, migrate 수행한다.
+```shell
+$ python.manage.py makemigrations
+$ python manage.py migrate
+```
+
+3. /admin에 들어가면 hook_text가 새로 생성 된 것을 확인할 수 있다.
+
+4. post_list.html, post_detail.html에 hook_text가 있을 때 출력
+- **text-muted**: 흐리게 글씨 표현
+- post_list: p.hook_text /  post_detail: post.hook_text
+```html
+{% if p.hook_text %}
+    <h5 class="text-muted">{{p.hook_text}}</h5>
+{%endif%}
+``` 
