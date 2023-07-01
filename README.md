@@ -514,3 +514,62 @@ $ python manage.py migrate
 />
 {%endif%}
 ```
+
+<br/>
+
+##### 1. 첨부파일 다운로드 버튼 생성하기
+
+1. post_detail.html
+
+```html
+<!--파일 다운로드 버튼 생성-->
+{% if post.file_upload %}
+<a
+  href="{{ post.file_upload.url }}" type="button"
+  class="btn btn-outline-dark"
+  roll="button"
+  download
+  >Download</a
+>
+{%endif%}
+```
+
+##### 2. 첨부파일 종류별로 아이콘 나타내기
+
+1. blog models.py에서 확장자를 알기 위해 파일 이름을 가져오는 함수를 생성한다.
+
+```python
+import os
+def get_file_name(self):
+    return os.path.basename(self.file_upload.name)
+```
+
+[Fontawesome](https://fontawesome.com/icons): 무료 아이콘 다운로드 사이트
+- 사용하려면 head에 script 추가
+```html
+<script src="https://kit.fontawesome.com/c85c5556f3.js"></script>
+```
+
+2. 확장자 명을 가져오는 함수를 생성한다.
+
+```python
+def get_file_ext(self):
+    return self.get_file_name().split('.')[-1]
+```
+
+3. post_detail.html 확장자 종류에 따라 아이콘 나타내기
+```html
+{% if post.file_upload %}
+    <a href="{{ post.file_upload.url }}" type="button" class="btn btn-outline-dark" roll="button" download="download">Download:
+    {% if post.get_file_ext == 'xlsx' or post.get_file_ext == 'xls' %}
+        <i class="fa-regular fa-file-excel"></i>
+    {% elif post.get_file_ext == 'csv' %}
+        <i class="fa-regular fa-file-csv"></i>
+    {% elif post.get_file_ext == 'docx'%}
+        <i class="fa-regular fa-file-word"></i>
+    {% else %}
+        <i class="fa-regular fa-file"></i>
+    {%endif%}
+    {{ post.get_file_name }}</a>
+{%endif%}
+```

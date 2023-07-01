@@ -1,5 +1,5 @@
 from django.db import models
-
+import os
 
 class Post(models.Model):
     title = models.CharField(max_length=50)
@@ -16,5 +16,14 @@ class Post(models.Model):
     def __str__(self):
         return f'[{self.pk}] {self.title}'
     
+    # 상세페이지 url
     def get_absolute_url(self):
         return f'/blog/{self.pk}/'
+    
+    # 파일이름 가져오는 함수
+    def get_file_name(self):
+        return os.path.basename(self.file_upload.name)
+    
+    # 확장자명을 가져오는 함수
+    def get_file_ext(self):
+        return self.get_file_name().split('.')[-1]
