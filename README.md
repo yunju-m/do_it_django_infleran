@@ -3,7 +3,7 @@
 Do It 장고 + 부트스트랩
 
 <div align="center">
-<img width="329" alt="doitdj" src="/images/doitdj.png">
+<img width="329" alt="doitdj" src="/blog/static/blog/images/doitdj.png">
 
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fyunju-m&count_bg=%23FFBADA&title_bg=%23555555&icon=&icon_color=%23FFA8CC&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
 
@@ -740,8 +740,8 @@ self.assertIn(post_001.content, post_area.text)
 
 <br>
 
-#### 템플릿 파일 모듈화 하기
-##### 1. extends - 화면 메인 영역 모듈화하기
+### 템플릿 파일 모듈화 하기
+#### 1. extends - 화면 메인 영역 모듈화하기
 1. base.html 생성
 - post_list.html와 post_detail.html을 모듈화하는 html
 - post_list.html 복사
@@ -773,4 +773,50 @@ self.assertIn(post_001.content, post_area.text)
 ```html
 {% block main_area %}
 {% endblock %}
+```
+<br>
+
+#### 2. include - 네비게이션바, footer 모듈화하기
+1. 중복 네비게이션바 테스트에 대해 navbar_test 함수 생성한다.
+- test가 먼저 나오는 이름을 가진 함수로 시작하면 하나의 유닛으로 인식한다.
+```python
+def navbar_test(self, soup):
+    navbar = soup.nav
+    self.assertIn('Blog', navbar.text)
+    self.assertIn('Blog', navbar.text)
+```
+- 위의 내용에 있던 자리에는 함수를 호출해준다.
+```python
+self.navbar_test(soup)
+```
+
+2. 네비게이션바에 있는 Logo, Home, Blog, About me 하이퍼링크에 대해 경로 변경 테스트
+- a 링크의 속성 중 href 경로에 대해 같은지 확인한다.
+
+```python
+def navbar_test(self, soup):
+    navbar = soup.nav
+    self.assertIn('Blog', navbar.text)
+    self.assertIn('Blog', navbar.text)
+
+    logo_btn = navbar.find('a', text='Do It Django')
+    self.assertEqual(logo_btn.attrs['href'], '/')
+
+    home_btn = navbar.find('a', text='Home')
+    self.assertEqual(home_btn.attrs['href'], '/')
+
+    blog_btn = navbar.find('a', text='Blog')
+    self.assertEqual(blog_btn.attrs['href'], '/blog/')
+
+    about_me_btn = navbar.find('a', text='About me')
+    self.assertEqual(about_me_btn.attrs['href'], '/about_me/')
+```
+3. navbar.html을 생성하고 base.html에 있는 네비게시션바, 모달 파트를 넣어준 후 그 위치에 다음 코드를 넣어준다.
+```html
+{% include 'blog/vavbar.html' %}
+```
+
+4. footer.html을 생성하고 base.html에 있는 footer 파트를 넣어준 후 그 위치에 다음 코드를 넣어준다.
+```html
+{% include 'blog/footer.html' %}
 ```
