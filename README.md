@@ -11,7 +11,7 @@ Do It 장고 + 부트스트랩
 
 # Do It Django Infleran 강의
 
->**[강의 사이트](https://www.inflearn.com/course/%EB%91%90%EC%9E%87-%ED%8C%8C%EC%9D%B4%EC%8D%AC-%EC%9B%B9%EA%B0%9C%EB%B0%9C)** : Do It 장고 + 부트스트랩: 파이썬 웹 개발
+>**[강의 사이트](https://www.inflearn.com/course/%EB%91%90%EC%9E%87-%ED%8C%8C%EC%9D%B4%EC%8D%AC-%EC%9B%B9%EA%B0%9C%EB%B0%9C)** : Do It 장고 + 부트스트랩: 파이썬 웹 개발 <br>
 **개발기간: 2023.06.21 ~ 2022.06.~**
 
 ## 프로젝트 소개
@@ -66,7 +66,21 @@ $ python manage.py startapp blog
 $ python manage.py startapp single_pages
 ```
 
+### Beautifulsoup4 설치
+[**Beautifulsoup 이용한 TDD**](#tdd-테스트-주도-개발)
+```shell
+$ pip install beautifulsoup4
+```
+
+### django shell 성능 향상 기능
+[**django shell_plus 이용한 다대일구조 확인**](#django-shell로-다대일구조-연결-확인)
+```shell
+$ pip install django_extensions
+$ pip install ipython
+```
+
 ### 새로운 앱 프로젝트 setting
+- 앞서 설치한 django_extensions을 설정한다.
 
 ```python
 INSTALLED_APPS = [
@@ -76,11 +90,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    
+    "django_extensions",
     "blog",
     "single_pages",
 ]
 ```
-
 ---
 
 ## Stacks 🐈
@@ -959,3 +974,66 @@ class Meta:
 | blank=True | null=True |
 | :--------: | :-------: |
 | 사용자가 form을 입력할 때 필수사항이 모두 포함되어 있는지 판단 <br> 삭제되거나 수정, 탈퇴에 영향x | 데이터베이스의 필수사항을 결정 <br> 삭제, 수정에 영향o, 운영방침을 정한다. | 
+
+<br>
+
+#### django shell로 다대일구조 연결 확인
+1. 기본 shell을 이용한 모델(Post, Category) 확인
+```shell
+$ python manage.py shell
+>>> from blog.models import Post, Category
+>>> Post.objects.count()
+5
+>>> Category.objects.count()
+3
+>>> for p in Post.objects.all():
+...     print(p)
+...
+[1] 첫번째 포스트 :: yunju
+[2] 두번째 포스트 :: yunju
+[3] 세번째 포스트 :: yunju
+[5] Django 인프런 강의 수강 :: yunju
+[6] Django는 파이썬 프레임워크 :: yunju
+>>> for c in Category.objects.all():
+...     print(c)
+...
+programming
+django
+cat
+```
+
+2. django_extension 라이브러리를 이용한 shell_plus 이용
+```shell
+In [1]: for p in Post.objects.all():
+...:        print(p)
+...:
+[1] 첫번째 포스트 :: yunju
+[2] 두번째 포스트 :: yunju
+[3] 세번째 포스트 :: yunju
+[5] Django 인프런 강의 수강 :: yunju
+[6] Django는 파이썬 프레임워크 :: yunju
+
+In [2]: for c in Category.objects.all():
+   ...:     print(c)
+   ...:
+programming
+django
+cat
+
+In [5]: category_programming = Category.objects.get(slug="django")
+
+In [6]: category_proogramming
+Out[6]: <Category: django>
+
+## 카테고리 필드명은 .대신 __를 사용하여 정보를 얻어올 수 있다.
+In [7]: category_proogramming = Category.objects.get(name__startswith="cat")
+
+In [8]: category_proogramming
+Out[8]: <Category: cat>
+
+In [9]: for p in category_programming.post_set.all():
+    ...:     print(p)
+    ...:
+[5] Django 인프런 강의 수강 :: yunju
+[6] Django는 파이썬 프레임워크 :: yunju
+```
