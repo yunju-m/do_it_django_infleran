@@ -1247,3 +1247,117 @@ class PostDetail(DetailView):
     <span class="badge badge-secondary float-right">미분류</span>
 {% endif%}
 ```
+
+<br>
+
+#### 카테고리별 페이지 나타내기
+1. blog앱 tests.py에 카테고리별 페이지가 나타나도록 하는 함수 test_category_page를 생성한다.
+- category_programming에 대한 client를 response로 지정
+- models.py에서 선언한 고유 url를 반환하는  get_absolute_url함수를 호출한다.
+- 네비게이션 바, 카테고리가 제대로 작동하는지 테스트
+- main-area div안과 h1에 category_programming이름을 넣어준다.
+- main_area.text에는 post_001의 제목이 존재하는지 파악하고 post_002, post_003은 존재하지 않아야 한다.
+```python
+def test_category_page(self):
+    response = self.client.get(self.category_programming.get_absolute_url())
+    self.assertEqual(response.status_code, 200)
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    self.navbar_test(soup)
+    self.category_card_test(soup)
+
+    main_area = soup.find('div', id='main-area')
+    self.assertIn(self.category_programming.name, main_area.h1.text)
+    self.assertIn(self.category_programming.name, main_area.text)
+    self.assertIn(self.post_001.title, main_area.text)
+    self.assertNotIn(self.post_002.title, main_area.text)
+    self.assertNotIn(self.post_003.title, main_area.text)
+```
+
+2. models.py의 Category모델에 고유 url을 갖도록 get_absolute_url 함수를 생성한다.
+- slug는 고유한 값이다.
+```python 
+def get_absolute_url(self):
+    return f'/blog/category/{self.slug}/'
+```
+
+3. 해당 경로에 대해 urls.py에 생성한다.
+- 소문자인 경우 : **함수**
+💓 category_page는 소문자이므로 함수이다.
+- 대문자인 경우 : **클래스**
+```python
+urlpatterns = [
+    path('category/<str:slug>/', views.category_page),
+    path('<int:pk>/', views.PostDetail.as_view()),
+    path('', views.PostList.as_view()),
+]
+
+```
+4. views.py에 category_page 함수를 생성한다.
+```python
+def category_page(request, slug):
+    category = Category.objects.get(slug=slug)
+    return render(
+        request,
+        'blog/post_list.html',
+        {
+            'post_list': Post.objects.filter(category=category),
+            'categories': Category.objects.all(),
+            'no_category_post_count': Post.objects.filter(category=None).count(),
+            'category': category
+        }
+    )
+```
+
+5. post_list.html에 category_page로부터 받은 category가 있다면 h1에 출력해준다.
+```html
+<h1>
+Blog
+{% if category %}
+    <span class="badge badge-secondary float-right">{{ category }}</span>
+{% endif %}
+</h1>
+```
+
+6. base.html에 category에 대한 고유 url로 이동하도록 지정해준다.
+```html
+<!-- Categories widget-->
+<div class="card mb-4" id="categories-card">
+    <div class="card-header">Categories</div>
+    <div class="card-body">
+        <div class="row">
+        <ul>
+            {% for category in categories %}
+            <li>
+                <a href="{{ category.get_absolute_url }}">{{ category.name }}({{ category.post_set.count }})</a>
+            </li>
+            {% endfor %}
+            <li>
+            <a href="/blog/category/no_category/">미분류({{ no_category_post_count }})</a>
+            </li>
+        </ul>
+        </div>
+    </div>
+</div>
+```
+
+7. category가 없는 경우 no_category url에 대한 views.py에 조건을 추가해준다.
+```python
+def category_page(request, slug):
+    if slug == 'no_category':
+        category = '미분류'
+        post_list = Post.objects.filter(category=None)
+    else:
+        category = Category.objects.get(slug=slug)
+        post_list = Post.objects.filter(category=category)
+        return render(
+            request,
+            'blog/post_list.html',
+            {
+                'post_list': post_list,
+                'categories': Category.objects.all(),
+                'no_category_post_count': Post.objects.filter(category=None).count(),
+                'category': category
+            }
+        )
+```
