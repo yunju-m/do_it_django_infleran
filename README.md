@@ -1476,3 +1476,71 @@ self.assertNotIn(self.tag_python_kar.name, post_area.text)
     <br/><br/>
 {% endif %}
 ```
+<br>
+
+#### tag 페이지 생성하기
+- tag를 클릭했을 때 해당 tag의 페이지가 나타나도록 한다.
+ 
+1. tests.py에 tag페이지가 나타나는 함수 test_tag_page를 생성한다.
+```python
+def test_tag_page(self):
+    response = self.client.get(self.tag_django.get_absolute_url())
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    self.navbar_test(soup)
+    self.category_card_test(soup)
+
+    self.assertIn(self.tag_django.name, soup.h1.text)
+    main_area = soup.find('div', id='main-area')
+    self.assertIn(self.tag_django.name, main_area.text)
+
+    self.assertIn(self.post_001.title, main_area.text)
+    self.assertNotIn(self.post_002.title, main_area.text)
+    self.assertIn(self.post_003.title, main_area.text)
+```
+2. urls.py에 tag의 경로를 지정해준다.
+```python
+urlpatterns = [
+    path('tag/<str:slug>/', views.tag_page),
+    path('category/<str:slug>/', views.category_page),
+    path('<int:pk>/', views.PostDetail.as_view()),
+    path('', views.PostList.as_view()),
+]
+```
+
+3. views.py에 태그별 페이지를 반환하는 함수를 생성해준다.
+- category_page 함수와 거의 유사하다.
+```python
+# 태그별 페이지 반환 함수
+def tag_page(request, slug):
+    tag = Tag.objects.get(slug=slug)
+    post_list = tag.post_set.all()
+    return render(
+        request,
+        'blog/post_list.html',
+        {
+            'post_list': post_list,
+            'categories': Category.objects.all(),
+            'no_category_post_count': Post.objects.filter(category=None).count(),
+            'tag': tag
+        }
+    )
+```
+
+4. post_list.html의 h1에 tag가 있으면 tag을 출력해준다.
+- 카테고리와 구분하기 위해 tag를 클릭하면 tag 아이콘과 함께 출력한다.
+```html
+<h1>
+    Blog
+    {% if category %}
+      <span class="badge badge-secondary">{{ category }}</span>
+    {% endif %}
+    {% if tag %}
+      <span class="badge badge-light">
+        <i class="fa-solid fa-tags"></i>
+        {{ tag }}
+        ({{ tag.post_set.count }})</span>
+    {% endif %}
+</h1>
+```

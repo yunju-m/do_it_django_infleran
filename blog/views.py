@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.views.generic import ListView, DetailView
-from .models import Post, Category
+from .models import Post, Category, Tag
 
 # 리스트를 출력하는 django 기본 라이브러리
 class PostList(ListView):
@@ -41,3 +41,18 @@ def category_page(request, slug):
                 'category': category
             }
         )
+    
+# 태그별 페이지 반환 함수
+def tag_page(request, slug):
+    tag = Tag.objects.get(slug=slug)
+    post_list = tag.post_set.all()
+    return render(
+        request,
+        'blog/post_list.html',
+        {
+            'post_list': post_list,
+            'categories': Category.objects.all(),
+            'no_category_post_count': Post.objects.filter(category=None).count(),
+            'tag': tag
+        }
+    )

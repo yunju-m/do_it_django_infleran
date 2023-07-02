@@ -42,7 +42,6 @@ class TestView(TestCase):
             author=self.user_yunju,
             category=self.category_programming
         )
-
         self.post_001.tags.add(self.tag_django)
 
         self.post_002 = Post.objects.create(
@@ -56,7 +55,6 @@ class TestView(TestCase):
             content = "Category가 없는 포스트입니다.",
             author=self.user_yunju
         )
-
         self.post_003.tags.add(self.tag_django)
         self.post_003.tags.add(self.tag_python)
     
@@ -181,8 +179,8 @@ class TestView(TestCase):
     def test_category_page(self):
         response = self.client.get(self.category_programming.get_absolute_url())
         self.assertEqual(response.status_code, 200)
-
         soup = BeautifulSoup(response.content, 'html.parser')
+
         self.navbar_test(soup)
         self.category_card_test(soup)
 
@@ -192,3 +190,21 @@ class TestView(TestCase):
         self.assertIn(self.post_001.title, main_area.text)
         self.assertNotIn(self.post_002.title, main_area.text)
         self.assertNotIn(self.post_003.title, main_area.text)
+
+    # 태그 페이지를 나타내는 함수
+    def test_tag_page(self):
+        response = self.client.get(self.tag_django.get_absolute_url())
+        self.assertEqual(response.status_code, 200)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        self.navbar_test(soup)
+        self.category_card_test(soup)
+
+        self.assertIn(self.tag_django.name, soup.h1.text)
+        main_area = soup.find('div', id='main-area')
+        self.assertIn(self.tag_django.name, main_area.text)
+
+        self.assertIn(self.post_001.title, main_area.text)
+        self.assertNotIn(self.post_002.title, main_area.text)
+        self.assertIn(self.post_003.title, main_area.text)
+        
