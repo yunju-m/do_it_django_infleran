@@ -1361,3 +1361,38 @@ def category_page(request, slug):
             }
         )
 ```
+<br>
+
+### 다대다 관계
+#### Tag 모델 생성하기
+1. blog앱 models.py에 Tag 모델을 생성한다.
+```python
+class Tag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=50, unique=True, allow_unicode=True)
+
+    def __str__(self):
+        return self.name
+    
+    def get_absolute_url(self):
+        return f'/blog/tag/{self.slug}/'
+```
+
+2. Post 모델에 tag에 대한 변수를 생성한다.
+- 다대다관계를 가지므로 ManyToManyField를 가진다.
+```python
+tag = models.ManyToManyField(Tag, blank=True)
+```
+
+3. makemigraions, migrate 수행
+
+4. admin.py에 Tag에 대한 레지스터를 생성한다.
+```python
+from .models import  Tag
+
+class TagAdmin(admin.ModelAdmin):
+    prepopulated_fields = {'slug': ('name',)}
+
+admin.site.register(Tag, TagAdmin)
+```
+
