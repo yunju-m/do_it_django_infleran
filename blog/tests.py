@@ -43,6 +43,7 @@ class TestView(TestCase):
             author=self.user_yunju
         )
     
+    # 내비게이션바 함수
     def navbar_test(self, soup):
         navbar = soup.nav
         self.assertIn('Blog', navbar.text)
@@ -60,6 +61,7 @@ class TestView(TestCase):
         about_me_btn = navbar.find('a', text='About me')
         self.assertEqual(about_me_btn.attrs['href'], '/about_me/')
 
+    # 카테고리 카드 함수
     def category_card_test(self, soup):
         categories_card = soup.find('div', id='categories-card')
         self.assertIn('Categories', categories_card.text)
@@ -121,6 +123,7 @@ class TestView(TestCase):
         main_area = soup.find('div', id='main-area')
         self.assertIn('아직 게시물이 없습니다.', main_area.text)
 
+    # 상세페이지 함수
     def test_post_detail(self):
         self.assertEqual(Post.objects.count(), 3)
 
@@ -131,6 +134,7 @@ class TestView(TestCase):
 
         soup = BeautifulSoup(response.content, 'html.parser')
         self.navbar_test(soup)
+        self.category_card_test(soup)
 
         self.assertIn(self.post_001.title, soup.title.text)
 
@@ -138,5 +142,7 @@ class TestView(TestCase):
         post_area = main_area.find('div', id='post-area')
         
         self.assertIn(self.post_001.title, post_area.text)
+        self.assertIn(self.post_001.category.name, post_area.text)
+
         self.assertIn(self.user_yunju.username.upper(), post_area.text)
         self.assertIn(self.post_001.content, post_area.text)

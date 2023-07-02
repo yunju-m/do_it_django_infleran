@@ -1213,3 +1213,37 @@ category_card_test 함수에서처럼 띄어쓰기까지 동일하게 이름과 
     <span class="badge badge-secondary float-right">미분류</span>
 {% endif%}
 ```
+
+<br>
+
+#### 포스트 상세 페이지 수정하기
+1. blog앱 tests.py의 test_post_detail 함수에 category_card_test함수를 추가해준다.
+```python
+self.category_card_test(soup)
+``` 
+
+2. 포스트 제목 옆에 카테고리도 나타나도록 해준다.
+```python
+self.assertIn(self.post_001.category.name, post_area.text)
+```
+
+3. views.py에 PostDetail 함수에 PostList와 동일하게 get_context_data 함수를 생성하여 카테고리 데이터를 불러오도록 해준다.
+```python
+class PostDetail(DetailView):
+    model = Post
+
+    def get_context_data(self, **kwargs):
+        context = super(PostDetail, self).get_context_data()
+        context['categories'] = Category.objects.all()
+        context['no_category_post_count'] = Post.objects.filter(category=None).count()
+        return context
+```
+
+4. post_list.html와 동일하게 post_detail.html에도 해당 카테고리별 배지를 출력하는 문장을 넣어준다.
+```html
+{% if post.category %}
+    <span class="badge badge-secondary float-right">{{ post.category }}</span>
+{% else %}
+    <span class="badge badge-secondary float-right">미분류</span>
+{% endif%}
+```
