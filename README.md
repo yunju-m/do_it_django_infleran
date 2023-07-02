@@ -1036,4 +1036,180 @@ In [9]: for p in category_programming.post_set.all():
     ...:
 [5] Django 인프런 강의 수강 :: yunju
 [6] Django는 파이썬 프레임워크 :: yunju
+
+In [10] exit()
+```
+<br>
+
+#### 포스트 목록 페이지 수정하기
+##### 1. 카테고리에 대한 테스트 코드 작성
+1-1. blog앱의 tests.py에 setUp함수에 카테고리를 생성한다.
+```python
+from .models import Category
+
+self.category_programming = Category.objects.create(
+    name='programming', slug='programming'
+)
+self.category_music = Category.objects.create(
+    name='music', slug='music'
+)
+```
+
+1-2. blog앱의 tests.py에 setUp함수에 포스트 3개를 생성한다.
+```python
+self.post_001 = Post.objects.create(
+    title = "첫 번째 포스트 입니다.",
+    content = "Hello World! We are the World",
+    author=self.user_yunju,
+    category=self.category_programming
+)
+self.post_002 = Post.objects.create(
+    title = "두 번째 포스트 입니다.",
+    content = "저는 마라탕과 떡볶이를 사랑합니다",
+    author=self.user_subin,
+    category=self.category_music
+)
+self.post_003 = Post.objects.create(
+    title = "세 번째 포스트 입니다.",
+    content = "Category가 없는 포스트입니다.",
+    author=self.user_yunju
+)
+```
+
+2. test_post_list를 포스트가 있는 경우와 없는 경우로 구분해준다.
+- test_post_list_with_post
+```python
+# 포스트가 있는 경우
+def test_post_list_with_posts(self):
+    self.assertEqual(Post.objects.count(), 3)
+
+    response = self.client.get('/blog/')
+    self.assertEqual(response.status_code, 200)
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    self.assertIn('Blog', soup.title.text)
+
+    self.navbar_test(soup)      
+
+    main_area = soup.find('div', id='main-area')
+
+    self.assertIn(self.post_001.author.username.upper(), main_area.text)
+    self.assertIn(self.post_002.author.username.upper(), main_area.text)
+```
+- test_post_list_without_post
+```python
+# 포스트가 없는 경우
+def test_post_list_without_posts(self):
+    Post.objects.all().delete()
+    self.assertEqual(Post.objects.count(), 0)
+
+    response = self.client.get('/blog/')
+    self.assertEqual(response.status_code, 200)
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    self.navbar_test(soup)
+    self.assertIn('Blog', soup.title.text)
+    
+    main_area = soup.find('div', id='main-area')
+    self.assertIn('아직 게시물이 없습니다.', main_area.text)
+```
+
+##### 2. 포스트(카드)안에 카테고리 문구 생성
+1. 포스트 있는 경우(test_post_list_with_posts) 각 포스트에 해당하는 카드를 생성
+- main-area안에 카드 존재
+```python
+post_001_card = main_area('div', id='post-1')
+    self.assertIn(self.post_001.title, post_001_card.text)
+    self.assertIn(self.post_001.category.name, post_001_card.text)
+
+    post_002_card = main_area('div', id='post-2')
+    self.assertIn(self.post_002.title, post_002_card.text)
+    self.assertIn(self.post_002.category.name, post_002_card.text)
+
+    post_003_card = main_area('div', id='post-3')
+    self.assertIn(self.post_003.title, post_003_card.text)
+    self.assertIn('미분류', post_003_card.text)
+```
+
+2. 카테고리 카드 안에 카테고리 문구 추가
+```python
+def category_card_test(self, soup):
+    categories_card = soup.find('div', id='categories-card')
+    self.assertIn('Categories', categories_card.text)
+    self.assertIn(
+        f'{self.category_programming}({self.category_programming.post_set.count()})',
+        categories_card.text
+    )
+    self.assertIn(
+        f'{self.category_music}({self.category_music.post_set.count()})',
+        categories_card.text
+    )
+    self.assertIn(
+        f'미분류({Post.objects.filter(caegory=None).count()})',
+        categories_card.text
+    )
+```
+
+3. test_post_list_with_posts 함수에 카테고리 카드 테스트 함수를 호출해준다.
+```python
+self.category_card_test(soup)
+```
+ 
+4. views.py의 PostList 함수에 카테고리를 포함하는 context를 반환하는 함수를 생성해준다.
+```python
+from .models import Post, Category
+
+def get_context_data(self, **kwargs):
+    context = super(PostList, self).get_context_data()
+    context['categories'] = Category.objects.all()
+    context['no_category_post_count'] = Post.objects.filter(category=None).count()
+    return context
+```
+
+5. base.html의 카테고리 부분을 categories가 출력되도록 변경해준다.
+- id : categories-card
+- categories에 있는 각 category에 대해 이름과 개수를 출력한다.
+```html
+<a href="#">{{ category.name }} ({{ category.post_set.count }})</a>
+<a href="#">{{ category.name }} 
+            ({{ category.post_set.count }})</a>
+```
+- 다음과 같은 경우에는 오류가 발생한다.
+<span style="color:red">
+category_card_test 함수에서처럼 띄어쓰기까지 동일하게 이름과 개수를 출력하도록 설정해야한다.
+</span>
+
+```html
+<!-- Categories widget-->
+<div class="card mb-4" id="categories-card">
+<div class="card-header">Categories</div>
+<div class="card-body">
+    <div class="row">
+    <ul>
+        {% for category in categories %}
+        <li>
+            <a href="#">{{ category.name }}({{ category.post_set.count }})</a>
+        </li>
+        {% endfor %}
+        <li>
+        <a href="#">미분류({{ no_category_post_count }})</a>
+        </li>
+    </ul>
+    </div>
+</div>
+```
+
+6. post_list.html에 카테고리 별 id와 배지를 등록해준다.
+- 카테고리 카드의 id는 post별로 id 값을 지닌다.
+```html
+<div class="card mb-4" id="post-{{ p.id }}">
+```
+- 카테고리가 존재하면 해당 카테고리 이름을 가진 배지를 생성한다.
+- 카테고리가 없으면 미분류 배지를 생성한다.
+```html
+{% if p.category %}
+    <span class="badge badge-secondary float-right">{{ p.category }}</span>
+{% else %}
+    <span class="badge badge-secondary float-right">미분류</span>
+{% endif%}
 ```
