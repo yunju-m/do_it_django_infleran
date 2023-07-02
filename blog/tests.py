@@ -173,6 +173,10 @@ class TestView(TestCase):
         self.assertIn(self.user_yunju.username.upper(), post_area.text)
         self.assertIn(self.post_001.content, post_area.text)
 
+        self.assertIn(self.tag_django.name, post_area.text)
+        self.assertNotIn(self.tag_python.name, post_area.text)
+        self.assertNotIn(self.tag_python_kar.name, post_area.text)
+
     # 카테고리별 페이지 나타내는 함수
     def test_category_page(self):
         response = self.client.get(self.category_programming.get_absolute_url())

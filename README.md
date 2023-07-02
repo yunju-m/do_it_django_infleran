@@ -1452,3 +1452,27 @@ self.assertNotIn(self.tag_python_kar.name, post_003_card.text)
 <br/><br/>
 {% endif %}
 ```
+<br>
+
+#### 포스트 상세 페이지에 tag 추가하기
+1. blog앱 tests.py의 test_post_detail함수에도 동일하게 tag가 있는지 확인하는 코드를 추가해준다.
+- 상세페이지의 tag는 카드안에 있는게 아니라 post_area안에 있으므로 변경해준다.
+
+```python
+self.assertIn(self.tag_django.name, post_area.text)
+self.assertNotIn(self.tag_python.name, post_area.text)
+self.assertNotIn(self.tag_python_kar.name, post_area.text)
+```
+
+2. post_detail.html에 post_list.html와 동일하게 tag가 있으면 출력하도록 해준다.
+```html
+<!--Tag Content-->
+{% if post.tags.exists %}
+    <i class="fa-solid fa-tags"></i>
+    {% for tag in post.tags.iterator %}
+    <a href="{{ tag.get_absolute_url }}">
+        <span class="badge badge-light">{{ tag }}</span></a>
+    {% endfor %}
+    <br/><br/>
+{% endif %}
+```
