@@ -1381,7 +1381,7 @@ class Tag(models.Model):
 2. Post 모델에 tag에 대한 변수를 생성한다.
 - 다대다관계를 가지므로 ManyToManyField를 가진다.
 ```python
-tag = models.ManyToManyField(Tag, blank=True)
+tags = models.ManyToManyField(Tag, blank=True)
 ```
 
 3. makemigraions, migrate 수행
@@ -1396,3 +1396,59 @@ class TagAdmin(admin.ModelAdmin):
 admin.site.register(Tag, TagAdmin)
 ```
 
+#### 포스트 목록 페이지에 tag 추가하기
+1.  tests.py의 setUp 함수에 tag 3가지를 생성한다.
+```python
+# 태그 생성
+self.tag_python_kar = Tag.objects.create(
+    name="파이썬 공부", slug='파이썬-공부'
+)
+self.tag_python = Tag.objects.create(
+    name="python", slug='python'
+)
+self.tag_django = Tag.objects.create(
+    name="django", slug='django'
+)
+```
+2. post_001과 post_003에 tag를 추가해준다.
+```python
+self.post_001.tas.add(self.tag_django)
+self.post_003.tags.add(self.tag_django)
+self.post_003.tags.add(self.tag_python)
+```
+
+3. test_post_list_with_posts 함수에 각 포스트에 대해 tag가 있는 포스트들은 tag를 assertIn 해주고 없는 tag들에 대해서는 assertNotIn을 해준다.
+- post_001_card: django 태그
+- post_003_card: python, django 태그
+```python
+# post_001_card
+self.assertIn(self.tag_django.name, post_001_card.text)
+self.assertNotIn(self.tag_python.name, post_001_card.text)
+self.assertNotIn(self.tag_python_kar.name, post_001_card.text)
+
+# post_002_card
+self.assertNotIn(self.tag_django.name, post_002_card.text)
+self.assertNotIn(self.tag_python.name, post_002_card.text)
+self.assertNotIn(self.tag_python_kar.name, post_002_card.text)
+
+# post_003_card
+self.assertIn(self.tag_django.name, post_003_card.text)
+self.assertIn(self.tag_python.name, post_003_card.text)
+self.assertNotIn(self.tag_python_kar.name, post_003_card.text)        
+
+```
+
+4. /admin에 접속하여 tag을 생성한다.
+
+5. post_list.html에 tag가 있으면 tag아이콘과 함께 추가한다.
+- iterator를 사용하면 서버 부하 덜 부담준다.
+```html
+{% if p.tags.exists %}
+<i class="fa-solid fa-tags"></i>
+{% for tag in p.tags.iterator %}
+<a href="{{ tag.get_absolute_url }}">
+    <span class="badge badge-light">{{ tag }}</span></a>
+{% endfor %}
+<br/><br/>
+{% endif %}
+```

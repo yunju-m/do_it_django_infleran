@@ -38,7 +38,7 @@ class Post(models.Model):
     
     author = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)       
     category = models.ForeignKey(Category, null=True, on_delete=models.SET_NULL)
-    tag = models.ManyToManyField(Tag, blank=True)
+    tags = models.ManyToManyField(Tag, blank=True)
 
     ## django admin의 게시물 이름 설정
     def __str__(self):
