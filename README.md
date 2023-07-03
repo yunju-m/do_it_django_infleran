@@ -1544,3 +1544,99 @@ def tag_page(request, slug):
     {% endif %}
 </h1>
 ```
+<br>
+
+### 폼(form)으로 포스트 작성과 수정 기능 구현
+#### CreateView - 폼(form)으로 포스트 작성 페이지 만들기
+1. tests.py에서 포스트 작성할 form을 생성한다.
+```python
+# 폼(form)을 이용한 포스트 작성 페이지 생성
+def test_create_post(self):  
+    response = self.client.get('/blog/create_post/')
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    self.assertEqual('Create Post - Blog', soup.title.text)
+    main_area = soup.find('div', id='main-area')
+    self.assertIn('Create a New Post', main_area.text)
+```
+
+2. views.py에 django의 CreatView을 이용하여 포스트를 생성하는 class를 생성한다.
+- PostCreate 클래스는 모델 Post에서 제목, 소제목, 내용, 대표이미지, 파일 업로드, 카테고리를 field로 갖는다.
+```python 
+class PostCreate(CreateView):
+    model = Post
+    fields = ['title', 'hook_text', 'content', 'head_image', 'file_upload', 'category']
+```
+
+3. urls.py에 /blog/create_post/의 경로를 지정해준다.
+```python
+urlpatterns=[
+    path('create_post/', views.PostCreate.as_view()),   
+]
+```
+
+4. post_form.html 포스트 작성 페이지 생성한다.
+-**multipart/form-data** : 파일 또는 데이터를 보낼 수 있게해준다.
+- Create Post - Blog가 base.html의 title에서 자동 줄바꿈으로 test 문제 발생 !!!
+※ vscode ➡ settings.json 
+formatOnSave: false로 지정하여 저장 시 자동 줄바꿈 안되게 설정
+```json
+"[django-html]": {
+    "editor.formatOnSave": false,
+  }
+```
+- base_full_with.html을 불러온다.
+```html
+{% extends 'blog/base_full_with.html' %}
+
+{% block head_title%}Create Post - Blog{% endblock %}
+{% block main_area %}
+  <h1>Create a New Post</h1>
+  <hr/>
+
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <table>
+      {{ form }}
+      </table>
+      <button type="submit" class="btn btn-dark float-right">Submit</button>
+    </form>
+  {% endblock %}
+```
+
+5. base_full_with.html을 생성한다.
+- base.html에서 오른쪽 카테고리를 제외한 html이다.
+```html
+<!DOCTYPE html>
+{% load static%}
+<html lang="ko">
+
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"/>
+    <title>
+      {% block head_title %}Blog | Do it Django 웹 사이트{% endblock %}
+    </title>
+    <script src="https://kit.fontawesome.com/c85c5556f3.js"></script>
+    <!-- <link href=" {% static 'blog/bootstrap/style.css' %}"> -->
+  </head>
+
+  <body>
+    {% include 'blog/navbar.html'%}
+    <div class="container">
+      <div class="row my-3">
+        <div class="col-12" id="main-area">
+          {% block main_area %}{% endblock %}
+        </div>
+      </div>
+    </div>
+    {% include 'blog/footer.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+
+</html>
+
+```
