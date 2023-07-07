@@ -1640,3 +1640,95 @@ formatOnSave: false로 지정하여 저장 시 자동 줄바꿈 안되게 설정
 </html>
 
 ```
+<br>
+
+#### GET과 POST
+| GET | POST|
+|:---:|:---:|
+| 간단하게 URL에 필요한 것을 담아서 보낸다. <br> 필요한 것을 URL을 통해 전달 주로, 서버에서 무엇인가를 가져올 때 사용 <br> ex, q=사과를 입력하면 사과를 검색 | URL이 아닌 BOX에 담아서 보낸다. <br> 주로, 서버에게 전달하고 담을 대 사용 <br> ex, 게시글 post에 내용을 입력 |
+
+#### LoginRequiredMixin
+#### 1. 비로그인 사용자는 포스트 작성 제한 설정
+- 로그인하지 않은 게시물에 대한 test_create_post_without_login 함수를 생성한다.
+```python 
+def test_create_post_without_login(self):
+    response = self.client.get('/blog/create_post/')
+    self.assertNotEqual(response.status_code, 200)
+```
+#### 2. 로그인한 사용자에게만 포스트 작성 허용 설정
+1. tests.py에서 로그인한 게시물에 대한 함수를 생성한다. 
+- test_create_post 함수를 test_create_post_with_login 함수로 변경한다.
+- 로그인한 사용자에 대해서만 포스트 작성이 가능하다는 조건을 추가해준다.
+```python
+def test_create_post_with_login(self):
+    self.client.login(username='yunju', password='0129')
+    response = self.client.get('/blog/create_post/')
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    self.assertEqual('Create Post - Blog', soup.title.text)
+    main_area = soup.find('div', id='main-area')
+    self.assertIn('Create a New Post', main_area.text)
+```
+
+2. 사용자 로그인 판단은 django에서 제공해주는 LoginRequireMixin을 이용하면 된다.
+- views.py에서 PostCreate함수에 다음을 추가한다.
+```python
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+class PostCreate(LoginRequiredMixin, CreateView):
+    model = Post
+    fields = ['title', 'hook_text', 'content', 'head_image', 'file_upload', 'category']
+```
+
+3. post를 이용하여 새로운 포스트를 생성하고 가장 최근에 생성한 포스트(last_post)에 대해 제대로 생성되었는지 test한다.
+
+**FAILD문제 발생**
+※ self.client.post해서 post를 생성하지않고 이전에 생성한 post가 마지막으로 설정되어 있었다. <br>
+나의 경우 다음과 같이 코드를 작성했다.
+```python
+self.assertEqual(last_post.title, '세 번째 포스트 입니다.')
+self.assertEqual(last_post.content, 'Category가 없는 포스트입니다.')
+```
+
+- 수업 내용 전체 코드
+```python
+self.client.post(
+    '/blog/create_post/',
+    {
+        'title': 'Post Form 만들기',
+        'content': 'Post Form 페이지를 만들어보자!'
+    }
+)
+
+last_post = Post.objects.last()
+self.assertEqual(last_post.title, 'Post Form 만들기')
+self.assertEqual(last_post.content, 'Post Form 페이지를 만들어보자!')
+```
+
+4. 로그인 사용자에 대하여 게시물을 작성할 수 있도록 조건을 준다.
+- tests.py에 로그인 판단 여부를 확인하는 코드를 추가해준다.
+```python
+self.assertEqual(last_post.author.username, 'yunju')
+```
+
+- views.py에 PostCreate함수에 CreateView의 Form_valid을 이용한다.
+- **form_valid** : form의 입력한 내용이 유효한지 판단
+- 로그인한 상태이면, 해당 사용자(author)는 로그인 사용자로 설정
+- 로그인하지 않은 상태이면, blog로 이동
+```python 
+from django.shortcuts import render, redirect
+
+class PostCreate(LoginRequiredMixin, CreateView):
+    model = Post
+    fields = ['title', 'hook_text', 'content',
+              'head_image', 'file_upload', 'category']
+
+    def form_valid(self, form):
+        current_user = self.request.user
+        if current_user.is_authenticated:
+            form.instance.author = current_user
+            return super(PostCreate, self).form_valid(form)
+        else:
+            return redirect('/blog')
+```

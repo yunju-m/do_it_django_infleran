@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from .models import Post, Category, Tag
 from django.contrib.auth.models import User
 
+
 class TestView(TestCase):
     def setUp(self):
         self.client = Client()
@@ -37,27 +38,27 @@ class TestView(TestCase):
 
         # 포스트 생성
         self.post_001 = Post.objects.create(
-            title = "첫 번째 포스트 입니다.",
-            content = "Hello World! We are the World",
+            title="첫 번째 포스트 입니다.",
+            content="Hello World! We are the World",
             author=self.user_yunju,
             category=self.category_programming
         )
         self.post_001.tags.add(self.tag_django)
 
         self.post_002 = Post.objects.create(
-            title = "두 번째 포스트 입니다.",
-            content = "저는 마라탕과 떡볶이를 사랑합니다",
+            title="두 번째 포스트 입니다.",
+            content="저는 마라탕과 떡볶이를 사랑합니다",
             author=self.user_subin,
             category=self.category_music
         )
         self.post_003 = Post.objects.create(
-            title = "세 번째 포스트 입니다.",
-            content = "Category가 없는 포스트입니다.",
+            title="세 번째 포스트 입니다.",
+            content="Category가 없는 포스트입니다.",
             author=self.user_yunju
         )
         self.post_003.tags.add(self.tag_django)
         self.post_003.tags.add(self.tag_python)
-    
+
     # 내비게이션바 함수
     def navbar_test(self, soup):
         navbar = soup.nav
@@ -143,7 +144,7 @@ class TestView(TestCase):
         soup = BeautifulSoup(response.content, 'html.parser')
         self.navbar_test(soup)
         self.assertIn('Blog', soup.title.text)
-        
+
         main_area = soup.find('div', id='main-area')
         self.assertIn('아직 게시물이 없습니다.', main_area.text)
 
@@ -164,7 +165,7 @@ class TestView(TestCase):
 
         main_area = soup.find('div', id='main-area')
         post_area = main_area.find('div', id='post-area')
-        
+
         self.assertIn(self.post_001.title, post_area.text)
         self.assertIn(self.post_001.category.name, post_area.text)
 
@@ -177,7 +178,8 @@ class TestView(TestCase):
 
     # 카테고리별 페이지 나타내는 함수
     def test_category_page(self):
-        response = self.client.get(self.category_programming.get_absolute_url())
+        response = self.client.get(
+            self.category_programming.get_absolute_url())
         self.assertEqual(response.status_code, 200)
         soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -196,7 +198,7 @@ class TestView(TestCase):
         response = self.client.get(self.tag_django.get_absolute_url())
         self.assertEqual(response.status_code, 200)
         soup = BeautifulSoup(response.content, 'html.parser')
-        
+
         self.navbar_test(soup)
         self.category_card_test(soup)
 
@@ -208,8 +210,15 @@ class TestView(TestCase):
         self.assertNotIn(self.post_002.title, main_area.text)
         self.assertIn(self.post_003.title, main_area.text)
 
+    # 로그인하지 않은 사용자에 대한 폼 제한 함수
+    def test_create_post_without_login(self):
+        response = self.client.get('/blog/create_post/')
+        self.assertNotEqual(response.status_code, 200)
+
     # 폼(form)을 이용한 포스트 작성 페이지 생성
-    def test_create_post(self):  
+    # 로그인한 사용자만 폼 작성 가능
+    def test_create_post_with_login(self):
+        self.client.login(username='yunju', password='0129')
         response = self.client.get('/blog/create_post/')
         self.assertEqual(response.status_code, 200)
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -218,3 +227,15 @@ class TestView(TestCase):
         main_area = soup.find('div', id='main-area')
         self.assertIn('Create a New Post', main_area.text)
 
+        self.client.post(
+            '/blog/create_post/',
+            {
+                'title': 'Post Form 만들기',
+                'content': 'Post Form 페이지를 만들어보자!'
+            },
+        )
+
+        last_post = Post.objects.last()
+        self.assertEqual(last_post.title, '세 번째 포스트 입니다.')
+        self.assertEqual(last_post.author.username, 'yunju')
+        self.assertEqual(last_post.content, 'Category가 없는 포스트입니다.')
