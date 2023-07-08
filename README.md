@@ -1586,6 +1586,7 @@ formatOnSave: false로 지정하여 저장 시 자동 줄바꿈 안되게 설정
     "editor.formatOnSave": false,
   }
 ```
+또는 ctrl + , 누르고 Format On Save 체크 해제한다.
 - base_full_with.html을 불러온다.
 ```html
 {% extends 'blog/base_full_with.html' %}
@@ -1647,7 +1648,7 @@ formatOnSave: false로 지정하여 저장 시 자동 줄바꿈 안되게 설정
 |:---:|:---:|
 | 간단하게 URL에 필요한 것을 담아서 보낸다. <br> 필요한 것을 URL을 통해 전달 주로, 서버에서 무엇인가를 가져올 때 사용 <br> ex, q=사과를 입력하면 사과를 검색 | URL이 아닌 BOX에 담아서 보낸다. <br> 주로, 서버에게 전달하고 담을 대 사용 <br> ex, 게시글 post에 내용을 입력 |
 
-#### LoginRequiredMixin
+#### LoginRequiredMixin - 로그인 사용자만 포스트 작성
 #### 1. 비로그인 사용자는 포스트 작성 제한 설정
 - 로그인하지 않은 게시물에 대한 test_create_post_without_login 함수를 생성한다.
 ```python 
@@ -1730,5 +1731,85 @@ class PostCreate(LoginRequiredMixin, CreateView):
             form.instance.author = current_user
             return super(PostCreate, self).form_valid(form)
         else:
-            return redirect('/blog')
+            return redirect('/blog/')
+```
+<br>
+
+#### UserPassesTestMixin - 스태프에게만 포스트 작성 허용
+##### 1. staff 사용자만 포스트 작성 권한 설정
+1. tests.py의 setUp함수에서 초기 subin사용자에게는 staff권한을 부여하고 yunju사용자는 staff권한이 없도록 설정해준다.
+- SetUp함수에 다음 코드를 추가해준다.
+```python
+self.user_subin.is_staff = True
+self.user_subin.save()
+```
+
+2. test_create_post_with_login 함수에서 yunju사용자는 포스트 작성을 할 수 없고 subin사용자는 포스트 작성을 할 수 있도록 변경해준다.
+- 사용자가 'yunju'일 때, 200이 되서는 안된다.
+- 사용자가 'subin'일 때, 200이 되고 포스트를 작성할 수 있다.
+```python
+self.client.login(username='yunju', password='0129')
+response = self.client.get('/blog/create_post/')
+self.assertNotEqual(response.status_code, 200)
+
+self.client.login(username='subin', password='cute0313')
+response = self.client.get('/blog/create_post/')
+self.assertEqual(response.status_code, 200)
+```
+- 현재 사용자는 'subin'이므로 'yunju'➡'subin'으로 변경해준다.
+```python
+self.assertEqual(last_post.author.username, 'subin')
+```
+
+3. views.py의 PostCreate함수에 UserPassesTestMixin을 이용하여 특정 사용자를 지정한다. 
+- PostCreate 함수에 UserPassessTestMixin을 추가해준다.
+- PostCreate 함수에 들어온 것은 이미 로그인한 사용자임
+```python
+from django.contrib.auth.mixins import UserPassesTestMixin
+
+class PostCreate(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+```
+
+- test_func함수는 superuser 또는 staff인 사용자만 통과시킨다.
+```python
+def test_func(self):
+    return self.request.user.is_superuser or self.request.user.is_staff
+```
+
+4. form_valid 함수에서 로그인이 되어있고 그 사용자가 staff, super사용자인지 검사하는 내용 추가한다.
+- 외부에서 해킹툴로 포스트를 쏘거나 광고가 쌓이는 것을 방지한다.
+```python
+def form_valid(self, form):
+    current_user = self.request.user
+    if current_user.is_authenticated and (current_user.is_staff or current_user.is_superuser):
+        form.instance.author = current_user
+        return super(PostCreate, self).form_valid(form)
+    else:
+        return redirect('/blog/')
+```
+<br>
+
+##### 2. 포스트 작성 버튼 생성
+1. post_list.html에 버튼을 생성한다.
+- blog 제목이 나오기 전이므로 main-area다음에 버튼을 위치시킨다.
+```html
+<button type="button" class="btn btn-dark btn-sm float-right"><i class="fa-solid fa-pencil"></i>&nbsp; New Post</button>
+```
+
+2. New Post버튼을 클릭하면 게시글 작성 페이지로 이동하도록 설정한다.
+- url을 설정하기위해 button ➡ a링크 변경
+- href에 post작성 url로 설정
+```html
+<a type="button" href="/blog/create_post/" class="btn btn-dark btn-sm float-right"><i class="fa-solid fa-pencil"></i>&nbsp; New Post</a>
+```
+
+3. 로그인한 사용자이며 staff or superuser사용자만 작성하도록 권한 설정
+- 시크릿 창을 통해 접속해보면 New Post 버튼이 안보이는 것을 확인할 수 있다.
+- **&nbsp** : space를 누른 효과(띄어쓰기)
+```html
+{% if user.is_authenticated %}
+    {% if user.is_superuser or user.is_staff %}
+        <a type="button" href="/blog/create_post/" class="btn btn-dark btn-sm float-right"><i class="fa-solid fa-pencil"></i>&nbsp; New Post</a>
+    {% endif %}
+{% endif %}
 ```

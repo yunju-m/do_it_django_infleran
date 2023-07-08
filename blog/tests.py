@@ -14,8 +14,10 @@ class TestView(TestCase):
         )
         self.user_subin = User.objects.create_user(
             username='subin',
-            password='0313'
+            password='cute0313'
         )
+        self.user_subin.is_staff = True
+        self.user_subin.save()
 
         # 카테고리 생성
         self.category_programming = Category.objects.create(
@@ -220,9 +222,13 @@ class TestView(TestCase):
     def test_create_post_with_login(self):
         self.client.login(username='yunju', password='0129')
         response = self.client.get('/blog/create_post/')
-        self.assertEqual(response.status_code, 200)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        self.assertNotEqual(response.status_code, 200)
 
+        self.client.login(username='subin', password='cute0313')
+        response = self.client.get('/blog/create_post/')
+        self.assertEqual(response.status_code, 200)
+
+        soup = BeautifulSoup(response.content, 'html.parser')
         self.assertEqual('Create Post - Blog', soup.title.text)
         main_area = soup.find('div', id='main-area')
         self.assertIn('Create a New Post', main_area.text)
@@ -231,11 +237,11 @@ class TestView(TestCase):
             '/blog/create_post/',
             {
                 'title': 'Post Form 만들기',
-                'content': 'Post Form 페이지를 만들어보자!'
+                'content': 'Post Form 페이지 만들어보자!!!'
             },
         )
 
         last_post = Post.objects.last()
-        self.assertEqual(last_post.title, '세 번째 포스트 입니다.')
-        self.assertEqual(last_post.author.username, 'yunju')
-        self.assertEqual(last_post.content, 'Category가 없는 포스트입니다.')
+        self.assertEqual(last_post.title, 'Post Form 만들기')
+        self.assertEqual(last_post.author.username, 'subin')
+        self.assertEqual(last_post.content, 'Post Form 페이지 만들어보자!!!')
