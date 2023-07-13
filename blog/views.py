@@ -1,12 +1,10 @@
-from typing import Optional
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, redirect
-from django.views.generic import ListView, DetailView, CreateView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from .models import Post, Category, Tag
 
 # 리스트를 출력하는 django 기본 라이브러리
-
-
 class PostList(ListView):
     model = Post
     ordering = '-pk'
@@ -19,8 +17,6 @@ class PostList(ListView):
         return context
 
 # 하나의 리스트를 불러오는 django 기본 라이브러리
-
-
 class PostDetail(DetailView):
     model = Post
 
@@ -32,8 +28,6 @@ class PostDetail(DetailView):
         return context
 
 # 포스트 생성 함수
-
-
 class PostCreate(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Post
     fields = ['title', 'hook_text', 'content','head_image', 'file_upload', 'category']
@@ -49,9 +43,17 @@ class PostCreate(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         else:
             return redirect('/blog/')
 
+class PostUpdate(LoginRequiredMixin, UpdateView):
+    model = Post
+    fields = ['title', 'hook_text', 'content','head_image', 'file_upload', 'category']
+    template_name = 'blog/post_update_form.html'
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and request.user == self.get_object().author:
+            return super(PostUpdate, self).dispatch(request, *args, **kwargs)
+        else:
+            return PermissionDenied
+
 # 카테고리별 페이지 반환 함수
-
-
 def category_page(request, slug):
     if slug == 'no_category':
         category = '미분류'
@@ -71,8 +73,6 @@ def category_page(request, slug):
         )
 
 # 태그별 페이지 반환 함수
-
-
 def tag_page(request, slug):
     tag = Tag.objects.get(slug=slug)
     post_list = tag.post_set.all()

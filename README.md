@@ -1813,3 +1813,110 @@ def form_valid(self, form):
     {% endif %}
 {% endif %}
 ```
+
+#### UpdateView - 포스트 수정 페이지 만들기
+- 포스트 수정 내용에 대해 업데이트해준다.
+- test_update_post 함수를 생성하여 다음 작업을 수행한다.
+- url은 post3의 기본키를 사용한다.
+```python
+def test_update_post(self):
+    update_post_url = '/blog/update_post/{self.post_003.pk}/'
+```
+##### 1. 로그인하지 않은 상태에서 접근하는 경우
+```python
+response = self.client.get(update_post_url)
+self.assertNotEqual(response.status_code, 200)
+```
+##### 2. 로그인 했지만, 작성자가 아닌 경우
+```python
+self.assertNotEqual(self.post_003.author, self.user_yunju)
+self.client.login(username='yunju', password='0129')
+response = self.client.get(update_post_url)
+self.assertNotEqual(response.status_code, 200)
+```
+##### 3. 게시글 작성자가 수정하는 경우
+1. 동일한 방법으로 작성자인경우 200이 나오도록(정상) 해준다.
+```python
+self.assertEqual(self.post_003.author, self.user_subin)
+self.client.login(username='subin', password='cute0313')
+response = self.client.get(update_post_url)
+self.assertEqual(response.status_code, 200)
+```
+
+2. 정상 사이트 접속하기위해 url을 지정해준다.
+```python
+urlpatterns = [
+    path('update_post/<int:pk>/', views.PostUpdate.as_view()),
+]
+```
+
+3. 해당 url 매핑시 실행되는 PostUpdate함수를 views.py에 생성해준다.
+- PostCreate와 마찬가지로 model은 Post이고 fields는 동일하다.
+- post_form.html에 자동으로 django가 게시글에 대해 반환한다.
+- **dispatch 함수** : 전달된 방식(GET, POST)이 무엇인지 알려준다. 권한이 있는 사용자인지 판단.
+- **PermissionDenied** : 권한이 없는 사용자는 200이 안뜨도록 해준다.
+
+```python
+from django.core.exceptions import PermissionDenied
+
+class PostUpdate(LoginRequiredMixin, UpdateView):
+    model = Post
+    fields = ['title', 'hook_text', 'content','head_image', 'file_upload', 'category']
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and request.user == self.get_object().author:
+            return super(PostUpdate, self).dispatch(request, *args, **kwargs)
+        else:
+            return PermissionDenied
+```
+
+4. 게시글을 가져올 때 창 이름도 변경되도록 설정한다.
+- Beautifulsoup을 이용하여 main-area에 Edit Post - Blog와 동일한지 확인하고 Edit Post를 넣어준다.
+```python
+soup = BeautifulSoup(response.content, "html.parser")
+self.assertEqual("Edit Post - Blog", soup.title.text)
+main_area = soup.find('div', id='main-area')
+self.assertIn('Edit Post', main_area.text)
+```
+
+- post_form.html을 복사하여 post_update_form.html을 생성하고 Create를 Edit로 변경하여 'Edit Post'와 동일하게 지정해준다.
+```html
+{% extends 'blog/base_full_with.html' %}
+{% block head_title%}Edit Post - Blog{% endblock %}
+{% block main_area %}
+  <h1>Edit Post</h1>
+  <hr/>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <table>
+      {{ form }}
+      </table>
+      <button type="submit" class="btn btn-dark float-right">Submit</button>
+    </form>
+  {% endblock %}
+```
+
+5. post를 통해 post_003의 게시글을 수정한다.
+- **follow=True** : redirect되는 페이지를 확인할 수 있다.
+```python
+response = self.client.post(
+    update_post_url,
+    {
+        'title': '세 번째 포스트를 수정했습니다.',
+        'content': '안녕 세계? 우리는 하나!',
+        'category': self.category_music.pk
+    },
+    follow=True
+)
+soup = BeautifulSoup(response.content, 'html.parser')
+main_area = soup.find('div', id='main-area')
+self.assertIn('세 번째 포스트를 수정했습니다.', main_area.text)
+self.assertIn('안녕 세계? 우리는 하나!', main_area.text)
+self.assertIn(self.category_music.name, main_area.text)
+```
+
+6. post_detail.html에 게시글 수정버튼을 생성하고 해당 게시글에 대해 수정 가능하게 한다.
+```html
+<!-- 수정버튼 -->
+{% if user.is_authenticated and user == post.author %}
+<a type="button" href="/blog/update_post/{{ post.pk }}" class="btn btn-dark btn-sm float-right"><i class="fa-solid fa-pencil"></i>&nbsp; Edit Post</a>
+{% endif %}
+```
