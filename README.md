@@ -1926,3 +1926,78 @@ self.assertIn(self.category_music.name, main_area.text)
 
 <br>
 
+#### 포스트 작성 페이지에 태그 선택 칸 추가하기
+- 포스트 작성 페이지에서 tag를 text형태로 작성하면 추가되는 방식으로 작업해본다.
+
+1. post_form.html은 포스트 작성 페이지이므로 ctrl+u을 클릭하여 해당 페이지의 상세 정보를 확인 후 다음과 같이 작업한다.
+- tag을 입력하는 text창을 생성한다.
+- tags의 id, name, type을 지정한다.
+
+```html
+<tr>
+    <th><label for="id_tags_str">Tags:</label></th>
+    <td><input type="text" id="id_tags_str" name="tags_str"></td>
+</tr>
+```
+
+2. test.py의 test_create_post_with_login함수에서 tag가 있는지 찾아보는 코드를 추가한다.
+- 이미 있는 tag는 연결만 해주고 없으면 새로 생성한다.
+
+```python
+ tag_str_input = main_area.find('input', id='id_tags_str')
+self.assertTrue(tag_str_input)
+self.client.post(
+    '/blog/create_post/',
+    {
+        'title': 'Post Form 만들기',
+        'content': 'Post Form 페이지를 만들어보자!',
+        'tags_str': 'new tag; 한글 태그, python'
+    },
+)
+```
+- 새로 생성한 post에 대해서는 new tag, 한글태그, python 총 3개 tag가 존재한다.
+- 이때 구분자 , ; 모두 사용할 수 있도록 해준다.
+- 전체 태그는 현재 파이썬공부, django, python 태그에서 new tag, 한글 태그가 추가되므로 총 5개 tag가 존재해야한다.
+```python
+self.assertEqual(last_post.tags.count(), 3)
+self.assertTrue(Tag.objects.get(name='new tag'))
+self.assertTrue(Tag.objects.get(name='한글 태그'))
+self.assertTrue(Tag.objects.get(name='python'))
+self.assertEqual(Tag.objects.count(), 5)
+```
+
+3. views.py의 form_valid함수에서 tag가 존재하면 tag를 표시하고 없으면 표시하지 않는 작업을 해준다.
+```python
+def form_valid(self, form):
+    current_user = self.request.user
+    if current_user.is_authenticated and (current_user.is_staff or current_user.is_superuser):
+        form.instance.author = current_user
+        response = super(PostCreate, self).form_valid(form)
+        
+        tags_str = self.request.POST.get('tags_str')
+        if tags_str:
+            tags_str = tags_str.strip()
+            tags_str = tags_str.replace(',', ';')
+            tags_list = tags_str.split(';')
+
+            for t in tags_list:
+                t = t.strip()
+                tag, is_tag_created = Tag.objects.get_or_create(name=t)
+                if is_tag_created:
+                    tag.slug = slugify(t, allow_unicode=True)
+                    tag.save()
+                self.object.tags.add(tag)
+        return response
+    else:
+        return redirect('/blog/')
+```
+- 입력받은(post) tag들을 tags_str이라고 한다.
+- **strip()** : tags_str의 띄어쓰기(공백)을 제거해준다.
+- **replace()** : 구분자(, ;)를 ";"으로 모두 통합한 후 ";"를 기준으로 분리한다.
+- **get_or_create** : name=t인 것이 있으면 가져오고 없으면 t로 이름을 만들고 가져온다.
+**tag** : 기존 혹은 만든 것에 대한 결과
+**is_tag_created** : 기존(True), 만든것(False) 반환
+
+4. 만약 tag가 새롭게 만들어진 것이라면 tag의 slug를 채워줘서 고유의 tag페이지를 이동할 수 있게 해준다.
+**slugify()** : slug에 할당하도록 해주는 함수
+**allow_unicode** : 한글지원
