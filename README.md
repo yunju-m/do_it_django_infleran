@@ -1686,7 +1686,9 @@ class PostCreate(LoginRequiredMixin, CreateView):
 
 **FAILD문제 발생**
 ※ self.client.post해서 post를 생성하지않고 이전에 생성한 post가 마지막으로 설정되어 있었다. <br>
-나의 경우 다음과 같이 코드를 작성했다.
+- 그 이유는 <p style="color:red">>client가 "POST"를 수행하지만 실제로 데이터베이스에 저장하지않는다.</p> 따라서 포스트가 생성되지않게 된다.
+- 다음과 같이 코드를 수정했다.
+
 ```python
 self.assertEqual(last_post.title, '세 번째 포스트 입니다.')
 self.assertEqual(last_post.content, 'Category가 없는 포스트입니다.')
@@ -1737,28 +1739,28 @@ class PostCreate(LoginRequiredMixin, CreateView):
 
 #### UserPassesTestMixin - 스태프에게만 포스트 작성 허용
 ##### 1. staff 사용자만 포스트 작성 권한 설정
-1. tests.py의 setUp함수에서 초기 subin사용자에게는 staff권한을 부여하고 yunju사용자는 staff권한이 없도록 설정해준다.
+1. tests.py의 setUp함수에서 초기 yunju사용자에게는 staff권한을 부여하고 subin사용자는 staff권한이 없도록 설정해준다.
 - SetUp함수에 다음 코드를 추가해준다.
 ```python
-self.user_subin.is_staff = True
-self.user_subin.save()
+self.user_yunju.is_staff = True
+self.user_yunju.save()
 ```
 
-2. test_create_post_with_login 함수에서 yunju사용자는 포스트 작성을 할 수 없고 subin사용자는 포스트 작성을 할 수 있도록 변경해준다.
-- 사용자가 'yunju'일 때, 200이 되서는 안된다.
-- 사용자가 'subin'일 때, 200이 되고 포스트를 작성할 수 있다.
+2. test_create_post_with_login 함수에서 subin사용자는 포스트 작성을 할 수 없고 yunju사용자는 포스트 작성을 할 수 있도록 변경해준다.
+- 사용자가 'subin'일 때, 200이 되서는 안된다.
+- 사용자가 'yunju'일 때, 200이 되고 포스트를 작성할 수 있다.
 ```python
-self.client.login(username='yunju', password='0129')
+self.client.login(username='subin', password='cute0313')
 response = self.client.get('/blog/create_post/')
 self.assertNotEqual(response.status_code, 200)
 
-self.client.login(username='subin', password='cute0313')
+self.client.login(username='yunju', password='0129')
 response = self.client.get('/blog/create_post/')
 self.assertEqual(response.status_code, 200)
 ```
-- 현재 사용자는 'subin'이므로 'yunju'➡'subin'으로 변경해준다.
+- 현재 사용자는 'yunju'인지 확인한다.
 ```python
-self.assertEqual(last_post.author.username, 'subin')
+self.assertEqual(last_post.author.username, 'yunju')
 ```
 
 3. views.py의 PostCreate함수에 UserPassesTestMixin을 이용하여 특정 사용자를 지정한다. 
@@ -1820,7 +1822,7 @@ def form_valid(self, form):
 - url은 post3의 기본키를 사용한다.
 ```python
 def test_update_post(self):
-    update_post_url = '/blog/update_post/{self.post_003.pk}/'
+    update_post_url = f'/blog/update_post/{self.post_003.pk}/'
 ```
 ##### 1. 로그인하지 않은 상태에서 접근하는 경우
 ```python
@@ -1855,6 +1857,7 @@ urlpatterns = [
 - post_form.html에 자동으로 django가 게시글에 대해 반환한다.
 - **dispatch 함수** : 전달된 방식(GET, POST)이 무엇인지 알려준다. 권한이 있는 사용자인지 판단.
 - **PermissionDenied** : 권한이 없는 사용자는 200이 안뜨도록 해준다.
+이때, return ❌ raise ⭕
 
 ```python
 from django.core.exceptions import PermissionDenied
@@ -1866,7 +1869,7 @@ class PostUpdate(LoginRequiredMixin, UpdateView):
         if request.user.is_authenticated and request.user == self.get_object().author:
             return super(PostUpdate, self).dispatch(request, *args, **kwargs)
         else:
-            return PermissionDenied
+            raise PermissionDenied
 ```
 
 4. 게시글을 가져올 때 창 이름도 변경되도록 설정한다.
@@ -1920,3 +1923,6 @@ self.assertIn(self.category_music.name, main_area.text)
 <a type="button" href="/blog/update_post/{{ post.pk }}" class="btn btn-dark btn-sm float-right"><i class="fa-solid fa-pencil"></i>&nbsp; Edit Post</a>
 {% endif %}
 ```
+
+<br>
+

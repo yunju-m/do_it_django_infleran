@@ -12,8 +12,7 @@ class PostList(ListView):
     def get_context_data(self, **kwargs):
         context = super(PostList, self).get_context_data()
         context['categories'] = Category.objects.all()
-        context['no_category_post_count'] = Post.objects.filter(
-            category=None).count()
+        context['no_category_post_count'] = Post.objects.filter(category=None).count()
         return context
 
 # 하나의 리스트를 불러오는 django 기본 라이브러리
@@ -23,8 +22,7 @@ class PostDetail(DetailView):
     def get_context_data(self, **kwargs):
         context = super(PostDetail, self).get_context_data()
         context['categories'] = Category.objects.all()
-        context['no_category_post_count'] = Post.objects.filter(
-            category=None).count()
+        context['no_category_post_count'] = Post.objects.filter(category=None).count()
         return context
 
 # 포스트 생성 함수
@@ -47,11 +45,12 @@ class PostUpdate(LoginRequiredMixin, UpdateView):
     model = Post
     fields = ['title', 'hook_text', 'content','head_image', 'file_upload', 'category']
     template_name = 'blog/post_update_form.html'
+    
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated and request.user == self.get_object().author:
             return super(PostUpdate, self).dispatch(request, *args, **kwargs)
         else:
-            return PermissionDenied
+            raise PermissionDenied
 
 # 카테고리별 페이지 반환 함수
 def category_page(request, slug):
