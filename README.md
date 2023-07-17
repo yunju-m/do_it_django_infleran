@@ -2001,3 +2001,93 @@ def form_valid(self, form):
 4. 만약 tag가 새롭게 만들어진 것이라면 tag의 slug를 채워줘서 고유의 tag페이지를 이동할 수 있게 해준다.
 **slugify()** : slug에 할당하도록 해주는 함수
 **allow_unicode** : 한글지원
+
+<br>
+
+#### 포스트 수정 페이지에 태그 선택 칸 추가하기
+1. tests.py의 test_update_post 함수에서 tag의 여부를 판단하는 코드를 작성한다.
+- tag가 존재하는지 확인
+- 파이썬 공부, python 태그가 기본 값으로 적혀있도록 설정한다.
+```python
+tag_str_input = main_area.find('input', id='id_tags_str')
+self.assertTrue(tag_str_input)
+self.assertIn('python; django', tag_str_input.attrs['value'])
+```
+
+2. post 글쓴이(사용자)가 tag를 수정할 수 있도록 tags_str를 추가하고 수정할 tag의 이름을 지정한다.
+```python
+response = self.client.post(
+    update_post_url,
+    {
+        'title': '세 번째 포스트를 수정했습니다.',
+        'content': '안녕 세계? 우리는 하나!',
+        'category': self.category_music.pk,
+        'tags_str': '파이썬 공부; django, new tag'
+    },
+    follow=True
+)
+```
+
+3. post 글쓴이(사용자)가 태그 목록을 파이썬 공부, 한글 태그, new tag로 수정하는 작업을 수행하는 test코드를 추가한다.
+- 이전의 존재하던 python 태그는 없어야한다.
+```python
+self.assertIn('파이썬 공부', main_area.text)
+self.assertIn('django', main_area.text)
+self.assertIn('new tag', main_area.text)
+self.assertNotIn('python', main_area.text)
+```
+
+4. post_update_form.html에 tag을 나타내는 코드를 추가해준다.
+```html
+<tr>
+    <th><label for="id_tags_str">Tags:</label></th>
+    <td><input type="text" id="id_tags_str" name="tags_str"></td>
+</tr>
+```
+
+5. views.py의 PostUpdate함수에서 get_context_data함수를 이용하여 다음과 같이 작업한다.
+- post의 tag들이 있는 경우 for문을 통해 tag_str_list에 tag를 저장한다.
+- 저장된 tag들에 대해 "; "으로 묶어서 context의 tags_str_default라는 인자로 넘겨준다.
+
+```python
+def get_context_data(self, **kwargs):
+    context = super(PostUpdate, self).get_context_data()
+    if self.object.tags.exists():
+        tag_str_list = list()
+        for t in self.object.tags.all():
+            tag_str_list.append(t.name)
+        context['tags_str_default'] = "; ".join(tag_str_list)
+    return context
+```
+
+6. post_update_form.html에 전달받은 tags_str_default를 출력해준다.
+```html
+<tr>
+    <th><label for="id_tags_str">Tags:</label></th>
+    <td><input type="text" id="id_tags_str" name="tags_str" value="{{ tags_str_default }}"></td>
+</tr>
+```
+
+7. '파이썬 공부' tag의 한글 지원을 위해 PostCreate와 마찬가지로 form_valid 함수를 생성하여 다음 작업을 수행한다.
+- post에 연결된 모든 tag들을 지운다. (clear)
+
+```python
+def form_valid(self, form):
+    response = super(PostUpdate, self).form_valid(form)
+    self.object.tags.clear()
+    
+    tags_str = self.request.POST.get('tags_str')
+    if tags_str:
+        tags_str = tags_str.strip()
+        tags_str = tags_str.replace(',', ';')
+        tags_list = tags_str.split(';')
+
+        for t in tags_list:
+            t = t.strip()
+            tag, is_tag_created = Tag.objects.get_or_create(name=t)
+            if is_tag_created:
+                tag.slug = slugify(t, allow_unicode=True)
+                tag.save()
+            self.object.tags.add(tag)
+    return response
+```

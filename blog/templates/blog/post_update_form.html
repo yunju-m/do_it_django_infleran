@@ -9,6 +9,10 @@
     <table>
       {{ form }}
       </table>
+      <tr>
+        <th><label for="id_tags_str">Tags:</label></th>
+        <td><input type="text" id="id_tags_str" name="tags_str" value="{{ tags_str_default }}"></td>
+      </tr>
       <button type="submit" class="btn btn-dark float-right">Submit</button>
     </form>
   {% endblock %}
