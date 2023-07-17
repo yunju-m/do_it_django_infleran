@@ -2,7 +2,7 @@
   "[python]": {
     "editor.defaultFormatter": "ms-python.autopep8"
   },
-  "python.formatting.provider": "none",
+  "python.formatting.provider": "autopep8",
   "files.associations": {
     "**/*.html": "html",
     "**/templates/**/*.html": "django-html",
@@ -14,7 +14,7 @@
   },
   "unibeautify.enabled": true,
   "[django-html]": {
-    "editor.formatOnSave": true,
+    "editor.formatOnSave": false,
     "editor.defaultFormatter": "Glavin001.unibeautify-vscode"
   }
 }

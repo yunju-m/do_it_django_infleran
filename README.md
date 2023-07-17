@@ -11,7 +11,8 @@ Do It 장고 + 부트스트랩
 
 # Do It Django Infleran 강의
 
-> **강의 사이트 : [https://www.inflearn.com/course/%EB%91%90%EC%9E%87-%ED%8C%8C%EC%9D%B4%EC%8D%AC-%EC%9B%B9%EA%B0%9C%EB%B0%9C] ** <br/> **개발기간: 2023.06.21 ~ 2022.06.~ **
+>**[강의 사이트](https://www.inflearn.com/course/%EB%91%90%EC%9E%87-%ED%8C%8C%EC%9D%B4%EC%8D%AC-%EC%9B%B9%EA%B0%9C%EB%B0%9C)** : Do It 장고 + 부트스트랩: 파이썬 웹 개발 <br>
+**개발기간: 2023.06.21 ~ 2022.06.~**
 
 ## 프로젝트 소개
 
@@ -65,7 +66,21 @@ $ python manage.py startapp blog
 $ python manage.py startapp single_pages
 ```
 
+### Beautifulsoup4 설치
+[**Beautifulsoup 이용한 TDD**](#tdd-테스트-주도-개발)
+```shell
+$ pip install beautifulsoup4
+```
+
+### django shell 성능 향상 기능
+[**django shell_plus 이용한 다대일구조 확인**](#django-shell로-다대일구조-연결-확인)
+```shell
+$ pip install django_extensions
+$ pip install ipython
+```
+
 ### 새로운 앱 프로젝트 setting
+- 앞서 설치한 django_extensions을 설정한다.
 
 ```python
 INSTALLED_APPS = [
@@ -75,11 +90,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    
+    "django_extensions",
     "blog",
     "single_pages",
 ]
 ```
-
 ---
 
 ## Stacks 🐈
@@ -732,7 +748,9 @@ main_area = soup.find('div', id='main-area')
 post_area = main_area.find('div', id='post-area')
 self.assertIn(post_001.title, post_area.text)
 ```
-2-5. 첫 번째 포스트의 작성자(author)가 포스트 영역에 있다. (아직 구현 불가능)
+2-5. 첫 번째 포스트의 작성자(author)가 포스트 영역에 있다. <br>
+[포스트 상세 페이지 작성자 추가하기](#포스트-상세-페이지-작성자author) 
+
 2-6. 첫 번쩨 포스트의 내용(content)가 포스트 영역에 있다.
 ```python
 self.assertIn(post_001.content, post_area.text)
@@ -778,7 +796,7 @@ self.assertIn(post_001.content, post_area.text)
 
 #### 2. include - 네비게이션바, footer 모듈화하기
 1. 중복 네비게이션바 테스트에 대해 navbar_test 함수 생성한다.
-- test가 먼저 나오는 이름을 가진 함수로 시작하면 하나의 유닛으로 인식한다.
+- **test_가 먼저 나오는 이름을 가진 함수로 시작하면 하나의 TestCase(유닛테스트)로 인식한다.**
 ```python
 def navbar_test(self, soup):
     navbar = soup.nav
@@ -820,3 +838,1166 @@ def navbar_test(self, soup):
 ```html
 {% include 'blog/footer.html' %}
 ```
+<br>
+
+### 다대일 관계
+#### 작성자(author) 생성하기
+1. blog 앱의 models.py에 author 추가하기
+- **CASCADE**: user가 탈퇴하면 해당 user의 게시글도 삭제(외래키참조 삭제)
+- **SET_NULL**: user가 탈퇴해도 해당 user의 게시글은 유지된다.
+이때, **null=True**로 지정해줘야 한다.
+```python
+from django.contrib.auth.models import User
+
+1. CASCADE인 경우
+author = models.ForeignKey(User, on_delete=models.CASCADE)
+
+2. SET_NULL인 경우
+author = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)  
+```
+
+2. /admin/에서 user에서 새로운 사용자를 생성한 후 해당 post에 대해 author 지정이 가능하다. 
+- CASCADE인 경우: user를 삭제하면 해당 post글도 자동으로 삭제되는 것을 확인할 수 있다.
+- SET_NULL인 경우: uesr를 삭제해도 해당 post글은 유지되는 것을 알 수 있다. (해당 글에 대해서 author는 **None**이 된다.)
+
+#### 포스트 목록, 포스트 상세 페이지에 작성자 정보 출력하기
+- blog앱의 tests.py의 setUp 함수에 user계정을 생성한다.
+- test를 실행할 때 초반에 user가 2명있다고 인식하게된다.
+```python
+self.user_trump = User.objects.create_user(
+    username='yunju',
+    password='0129',
+)
+self.user_trump = User.objects.create_user(
+    username='subin',
+    password='0313',
+)
+```
+##### 포스트 목록 페이지 작성자(author)
+1. test_post_list 함수의 각 post_001, post_002에 author을 지정해준다.
+```python
+post_001 = Post.objects.create(
+    title = "첫 번째 포스트 입니다.",
+    content = "Hello World! We are the World",
+    author=self.user_yunju
+)
+        
+post_002 = Post.objects.create(
+    title = "두 번째 포스트 입니다.",
+    content = "저는 마라탕과 떡볶이를 사랑합니다",
+    author=self.user_subin
+)
+```
+
+2. 게시글에 작성자 명을 추가해주기 위해 test_post_list에 다음 코드를 추가한다.
+```python
+self.assertIn(post_001.author.username.upper(), main_area.text)
+self.assertIn(post_002.author.username.upper(), main_area.text)
+```
+
+3. post_list.html에 개발자명에 해당 부분을 다음으로 수정한다.
+- upper: 대문자로 표현
+```html
+<a href="#">{{ p.author | upper }}</a>
+```
+
+##### 포스트 상세 페이지 작성자(author)
+1. test_post_detail 함수의 post_001에 author를 추가한다.
+```python
+post_001 = Post.objects.create(
+    title = "첫 번째 포스트 입니다.",
+    content = "Hello World! We are the World",
+    author = self.user_yunju
+)
+```
+
+2. 첫 번째 포스트의 작성자(author)가 포스트 영역에 표시한다.
+```python
+self.assertIn(self.user_yunju.username.upper(), post_area.text)
+```
+
+3.  post_detail.html에 개발자명에 해당 부분을 다음으로 수정한다.
+```html
+<!-- Author -->
+<p class="lead">
+by
+<a href="#">{{ post.author | upper }}</a>
+</p>
+```
+<br>
+
+#### Category 생성하기
+1. blog앱의 models.py에 Category class를 생성한다.
+- name: 카테고리 이름, 중복x
+- slug: 카테고리 클릭 시 url 뒤에 카테고리 이름이 붙어서 읽을 수 있게 한다.
+ex, food 카테고리를 클릭한 경우
+localhost:8000/blog/food/
+    - allow_unicode: 한글 지원
+    - self.name을 반환받는 함수 지정
+```python
+class Category(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=200, unique=True, allow_unicode=True)
+
+    def __str__(self):
+        return self.name
+```
+
+2. Post 모델에 카테고리 추가한다.
+```python
+category = models.ForeignKey(Category, null=True, on_delete=models.SET_NULL)
+```
+
+3. makemigrations, migrate 작업 수행한다.
+```shell
+$ python manage.py makemigrations
+$ python manage.py migrate
+```
+4. admins.py에 Category를 추가해준다.
+- Category의 name을 입력하면 자동으로 slug에도 입력되도록 설정한다.
+```python
+from .models import Category
+
+class CategoryAdmin(admin.ModelAdmin):
+    prepopulated_fields = {'slug': ('name',)}
+
+admin.site.register(Category, CategoryAdmin)
+
+```
+
+5. /admin의 Category 이름을 변경하기 위해 models.py에 다음을 추가해준다.
+```python
+class Meta:
+    verbose_name_plural = 'Categories'
+```
+
+| blank=True | null=True |
+| :--------: | :-------: |
+| 사용자가 form을 입력할 때 필수사항이 모두 포함되어 있는지 판단 <br> 삭제되거나 수정, 탈퇴에 영향x | 데이터베이스의 필수사항을 결정 <br> 삭제, 수정에 영향o, 운영방침을 정한다. | 
+
+<br>
+
+#### django shell로 다대일구조 연결 확인
+1. 기본 shell을 이용한 모델(Post, Category) 확인
+```shell
+$ python manage.py shell
+>>> from blog.models import Post, Category
+>>> Post.objects.count()
+5
+>>> Category.objects.count()
+3
+>>> for p in Post.objects.all():
+...     print(p)
+...
+[1] 첫번째 포스트 :: yunju
+[2] 두번째 포스트 :: yunju
+[3] 세번째 포스트 :: yunju
+[5] Django 인프런 강의 수강 :: yunju
+[6] Django는 파이썬 프레임워크 :: yunju
+>>> for c in Category.objects.all():
+...     print(c)
+...
+programming
+django
+cat
+```
+
+2. django_extension 라이브러리를 이용한 shell_plus 이용
+```shell
+In [1]: for p in Post.objects.all():
+...:        print(p)
+...:
+[1] 첫번째 포스트 :: yunju
+[2] 두번째 포스트 :: yunju
+[3] 세번째 포스트 :: yunju
+[5] Django 인프런 강의 수강 :: yunju
+[6] Django는 파이썬 프레임워크 :: yunju
+
+In [2]: for c in Category.objects.all():
+   ...:     print(c)
+   ...:
+programming
+django
+cat
+
+In [5]: category_programming = Category.objects.get(slug="django")
+
+In [6]: category_proogramming
+Out[6]: <Category: django>
+
+## 카테고리 필드명은 .대신 __를 사용하여 정보를 얻어올 수 있다.
+In [7]: category_proogramming = Category.objects.get(name__startswith="cat")
+
+In [8]: category_proogramming
+Out[8]: <Category: cat>
+
+In [9]: for p in category_programming.post_set.all():
+    ...:     print(p)
+    ...:
+[5] Django 인프런 강의 수강 :: yunju
+[6] Django는 파이썬 프레임워크 :: yunju
+
+In [10] exit()
+```
+<br>
+
+#### 포스트 목록 페이지 수정하기
+##### 1. 카테고리에 대한 테스트 코드 작성
+1-1. blog앱의 tests.py에 setUp함수에 카테고리를 생성한다.
+```python
+from .models import Category
+
+self.category_programming = Category.objects.create(
+    name='programming', slug='programming'
+)
+self.category_music = Category.objects.create(
+    name='music', slug='music'
+)
+```
+
+1-2. blog앱의 tests.py에 setUp함수에 포스트 3개를 생성한다.
+```python
+self.post_001 = Post.objects.create(
+    title = "첫 번째 포스트 입니다.",
+    content = "Hello World! We are the World",
+    author=self.user_yunju,
+    category=self.category_programming
+)
+self.post_002 = Post.objects.create(
+    title = "두 번째 포스트 입니다.",
+    content = "저는 마라탕과 떡볶이를 사랑합니다",
+    author=self.user_subin,
+    category=self.category_music
+)
+self.post_003 = Post.objects.create(
+    title = "세 번째 포스트 입니다.",
+    content = "Category가 없는 포스트입니다.",
+    author=self.user_yunju
+)
+```
+
+2. test_post_list를 포스트가 있는 경우와 없는 경우로 구분해준다.
+- test_post_list_with_post
+```python
+# 포스트가 있는 경우
+def test_post_list_with_posts(self):
+    self.assertEqual(Post.objects.count(), 3)
+
+    response = self.client.get('/blog/')
+    self.assertEqual(response.status_code, 200)
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    self.assertIn('Blog', soup.title.text)
+
+    self.navbar_test(soup)      
+
+    main_area = soup.find('div', id='main-area')
+
+    self.assertIn(self.post_001.author.username.upper(), main_area.text)
+    self.assertIn(self.post_002.author.username.upper(), main_area.text)
+```
+- test_post_list_without_post
+```python
+# 포스트가 없는 경우
+def test_post_list_without_posts(self):
+    Post.objects.all().delete()
+    self.assertEqual(Post.objects.count(), 0)
+
+    response = self.client.get('/blog/')
+    self.assertEqual(response.status_code, 200)
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    self.navbar_test(soup)
+    self.assertIn('Blog', soup.title.text)
+    
+    main_area = soup.find('div', id='main-area')
+    self.assertIn('아직 게시물이 없습니다.', main_area.text)
+```
+
+##### 2. 포스트(카드)안에 카테고리 문구 생성
+1. 포스트 있는 경우(test_post_list_with_posts) 각 포스트에 해당하는 카드를 생성
+- main-area안에 카드 존재
+```python
+post_001_card = main_area('div', id='post-1')
+    self.assertIn(self.post_001.title, post_001_card.text)
+    self.assertIn(self.post_001.category.name, post_001_card.text)
+
+    post_002_card = main_area('div', id='post-2')
+    self.assertIn(self.post_002.title, post_002_card.text)
+    self.assertIn(self.post_002.category.name, post_002_card.text)
+
+    post_003_card = main_area('div', id='post-3')
+    self.assertIn(self.post_003.title, post_003_card.text)
+    self.assertIn('미분류', post_003_card.text)
+```
+
+2. 카테고리 카드 안에 카테고리 문구 추가
+```python
+def category_card_test(self, soup):
+    categories_card = soup.find('div', id='categories-card')
+    self.assertIn('Categories', categories_card.text)
+    self.assertIn(
+        f'{self.category_programming}({self.category_programming.post_set.count()})',
+        categories_card.text
+    )
+    self.assertIn(
+        f'{self.category_music}({self.category_music.post_set.count()})',
+        categories_card.text
+    )
+    self.assertIn(
+        f'미분류({Post.objects.filter(caegory=None).count()})',
+        categories_card.text
+    )
+```
+
+3. test_post_list_with_posts 함수에 카테고리 카드 테스트 함수를 호출해준다.
+```python
+self.category_card_test(soup)
+```
+ 
+4. views.py의 PostList 함수에 카테고리를 포함하는 context를 반환하는 함수를 생성해준다.
+```python
+from .models import Post, Category
+
+def get_context_data(self, **kwargs):
+    context = super(PostList, self).get_context_data()
+    context['categories'] = Category.objects.all()
+    context['no_category_post_count'] = Post.objects.filter(category=None).count()
+    return context
+```
+
+5. base.html의 카테고리 부분을 categories가 출력되도록 변경해준다.
+- id : categories-card
+- categories에 있는 각 category에 대해 이름과 개수를 출력한다.
+```html
+<a href="#">{{ category.name }} ({{ category.post_set.count }})</a>
+<a href="#">{{ category.name }} 
+            ({{ category.post_set.count }})</a>
+```
+- 다음과 같은 경우에는 오류가 발생한다.
+<span style="color:red">
+category_card_test 함수에서처럼 띄어쓰기까지 동일하게 이름과 개수를 출력하도록 설정해야한다.
+</span>
+
+```html
+<!-- Categories widget-->
+<div class="card mb-4" id="categories-card">
+<div class="card-header">Categories</div>
+<div class="card-body">
+    <div class="row">
+    <ul>
+        {% for category in categories %}
+        <li>
+            <a href="#">{{ category.name }}({{ category.post_set.count }})</a>
+        </li>
+        {% endfor %}
+        <li>
+        <a href="#">미분류({{ no_category_post_count }})</a>
+        </li>
+    </ul>
+    </div>
+</div>
+```
+
+6. post_list.html에 카테고리 별 id와 배지를 등록해준다.
+- 카테고리 카드의 id는 post별로 id 값을 지닌다.
+```html
+<div class="card mb-4" id="post-{{ p.id }}">
+```
+- 카테고리가 존재하면 해당 카테고리 이름을 가진 배지를 생성한다.
+- 카테고리가 없으면 미분류 배지를 생성한다.
+```html
+{% if p.category %}
+    <span class="badge badge-secondary float-right">{{ p.category }}</span>
+{% else %}
+    <span class="badge badge-secondary float-right">미분류</span>
+{% endif%}
+```
+
+<br>
+
+#### 포스트 상세 페이지 수정하기
+1. blog앱 tests.py의 test_post_detail 함수에 category_card_test함수를 추가해준다.
+```python
+self.category_card_test(soup)
+``` 
+
+2. 포스트 제목 옆에 카테고리도 나타나도록 해준다.
+```python
+self.assertIn(self.post_001.category.name, post_area.text)
+```
+
+3. views.py에 PostDetail 함수에 PostList와 동일하게 get_context_data 함수를 생성하여 카테고리 데이터를 불러오도록 해준다.
+```python
+class PostDetail(DetailView):
+    model = Post
+
+    def get_context_data(self, **kwargs):
+        context = super(PostDetail, self).get_context_data()
+        context['categories'] = Category.objects.all()
+        context['no_category_post_count'] = Post.objects.filter(category=None).count()
+        return context
+```
+
+4. post_list.html와 동일하게 post_detail.html에도 해당 카테고리별 배지를 출력하는 문장을 넣어준다.
+```html
+{% if post.category %}
+    <span class="badge badge-secondary float-right">{{ post.category }}</span>
+{% else %}
+    <span class="badge badge-secondary float-right">미분류</span>
+{% endif%}
+```
+
+<br>
+
+#### 카테고리별 페이지 나타내기
+1. blog앱 tests.py에 카테고리별 페이지가 나타나도록 하는 함수 test_category_page를 생성한다.
+- category_programming에 대한 client를 response로 지정
+- models.py에서 선언한 고유 url를 반환하는  get_absolute_url함수를 호출한다.
+- 네비게이션 바, 카테고리가 제대로 작동하는지 테스트
+- main-area div안과 h1에 category_programming이름을 넣어준다.
+- main_area.text에는 post_001의 제목이 존재하는지 파악하고 post_002, post_003은 존재하지 않아야 한다.
+```python
+def test_category_page(self):
+    response = self.client.get(self.category_programming.get_absolute_url())
+    self.assertEqual(response.status_code, 200)
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    self.navbar_test(soup)
+    self.category_card_test(soup)
+
+    main_area = soup.find('div', id='main-area')
+    self.assertIn(self.category_programming.name, main_area.h1.text)
+    self.assertIn(self.category_programming.name, main_area.text)
+    self.assertIn(self.post_001.title, main_area.text)
+    self.assertNotIn(self.post_002.title, main_area.text)
+    self.assertNotIn(self.post_003.title, main_area.text)
+```
+
+2. models.py의 Category모델에 고유 url을 갖도록 get_absolute_url 함수를 생성한다.
+- slug는 고유한 값이다.
+```python 
+def get_absolute_url(self):
+    return f'/blog/category/{self.slug}/'
+```
+
+3. 해당 경로에 대해 urls.py에 생성한다.
+- 소문자인 경우 : **함수**
+💓 category_page는 소문자이므로 함수이다.
+- 대문자인 경우 : **클래스**
+```python
+urlpatterns = [
+    path('category/<str:slug>/', views.category_page),
+    path('<int:pk>/', views.PostDetail.as_view()),
+    path('', views.PostList.as_view()),
+]
+
+```
+4. views.py에 category_page 함수를 생성한다.
+```python
+def category_page(request, slug):
+    category = Category.objects.get(slug=slug)
+    return render(
+        request,
+        'blog/post_list.html',
+        {
+            'post_list': Post.objects.filter(category=category),
+            'categories': Category.objects.all(),
+            'no_category_post_count': Post.objects.filter(category=None).count(),
+            'category': category
+        }
+    )
+```
+
+5. post_list.html에 category_page로부터 받은 category가 있다면 h1에 출력해준다.
+```html
+<h1>
+Blog
+{% if category %}
+    <span class="badge badge-secondary float-right">{{ category }}</span>
+{% endif %}
+</h1>
+```
+
+6. base.html에 category에 대한 고유 url로 이동하도록 지정해준다.
+```html
+<!-- Categories widget-->
+<div class="card mb-4" id="categories-card">
+    <div class="card-header">Categories</div>
+    <div class="card-body">
+        <div class="row">
+        <ul>
+            {% for category in categories %}
+            <li>
+                <a href="{{ category.get_absolute_url }}">{{ category.name }}({{ category.post_set.count }})</a>
+            </li>
+            {% endfor %}
+            <li>
+            <a href="/blog/category/no_category/">미분류({{ no_category_post_count }})</a>
+            </li>
+        </ul>
+        </div>
+    </div>
+</div>
+```
+
+7. category가 없는 경우 no_category url에 대한 views.py에 조건을 추가해준다.
+```python
+def category_page(request, slug):
+    if slug == 'no_category':
+        category = '미분류'
+        post_list = Post.objects.filter(category=None)
+    else:
+        category = Category.objects.get(slug=slug)
+        post_list = Post.objects.filter(category=category)
+        return render(
+            request,
+            'blog/post_list.html',
+            {
+                'post_list': post_list,
+                'categories': Category.objects.all(),
+                'no_category_post_count': Post.objects.filter(category=None).count(),
+                'category': category
+            }
+        )
+```
+<br>
+
+### 다대다 관계
+#### Tag 모델 생성하기
+1. blog앱 models.py에 Tag 모델을 생성한다.
+```python
+class Tag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=50, unique=True, allow_unicode=True)
+
+    def __str__(self):
+        return self.name
+    
+    def get_absolute_url(self):
+        return f'/blog/tag/{self.slug}/'
+```
+
+2. Post 모델에 tag에 대한 변수를 생성한다.
+- 다대다관계를 가지므로 ManyToManyField를 가진다.
+```python
+tags = models.ManyToManyField(Tag, blank=True)
+```
+
+3. makemigraions, migrate 수행
+
+4. admin.py에 Tag에 대한 레지스터를 생성한다.
+```python
+from .models import  Tag
+
+class TagAdmin(admin.ModelAdmin):
+    prepopulated_fields = {'slug': ('name',)}
+
+admin.site.register(Tag, TagAdmin)
+```
+
+#### 포스트 목록 페이지에 tag 추가하기
+1.  tests.py의 setUp 함수에 tag 3가지를 생성한다.
+```python
+# 태그 생성
+self.tag_python_kar = Tag.objects.create(
+    name="파이썬 공부", slug='파이썬-공부'
+)
+self.tag_python = Tag.objects.create(
+    name="python", slug='python'
+)
+self.tag_django = Tag.objects.create(
+    name="django", slug='django'
+)
+```
+2. post_001과 post_003에 tag를 추가해준다.
+```python
+self.post_001.tas.add(self.tag_django)
+self.post_003.tags.add(self.tag_django)
+self.post_003.tags.add(self.tag_python)
+```
+
+3. test_post_list_with_posts 함수에 각 포스트에 대해 tag가 있는 포스트들은 tag를 assertIn 해주고 없는 tag들에 대해서는 assertNotIn을 해준다.
+- post_001_card: django 태그
+- post_003_card: python, django 태그
+```python
+# post_001_card
+self.assertIn(self.tag_django.name, post_001_card.text)
+self.assertNotIn(self.tag_python.name, post_001_card.text)
+self.assertNotIn(self.tag_python_kar.name, post_001_card.text)
+
+# post_002_card
+self.assertNotIn(self.tag_django.name, post_002_card.text)
+self.assertNotIn(self.tag_python.name, post_002_card.text)
+self.assertNotIn(self.tag_python_kar.name, post_002_card.text)
+
+# post_003_card
+self.assertIn(self.tag_django.name, post_003_card.text)
+self.assertIn(self.tag_python.name, post_003_card.text)
+self.assertNotIn(self.tag_python_kar.name, post_003_card.text)        
+
+```
+
+4. /admin에 접속하여 tag을 생성한다.
+
+5. post_list.html에 tag가 있으면 tag아이콘과 함께 추가한다.
+- iterator를 사용하면 서버 부하 덜 부담준다.
+```html
+{% if p.tags.exists %}
+<i class="fa-solid fa-tags"></i>
+{% for tag in p.tags.iterator %}
+<a href="{{ tag.get_absolute_url }}">
+    <span class="badge badge-light">{{ tag }}</span></a>
+{% endfor %}
+<br/><br/>
+{% endif %}
+```
+<br>
+
+#### 포스트 상세 페이지에 tag 추가하기
+1. blog앱 tests.py의 test_post_detail함수에도 동일하게 tag가 있는지 확인하는 코드를 추가해준다.
+- 상세페이지의 tag는 카드안에 있는게 아니라 post_area안에 있으므로 변경해준다.
+
+```python
+self.assertIn(self.tag_django.name, post_area.text)
+self.assertNotIn(self.tag_python.name, post_area.text)
+self.assertNotIn(self.tag_python_kar.name, post_area.text)
+```
+
+2. post_detail.html에 post_list.html와 동일하게 tag가 있으면 출력하도록 해준다.
+```html
+<!--Tag Content-->
+{% if post.tags.exists %}
+    <i class="fa-solid fa-tags"></i>
+    {% for tag in post.tags.iterator %}
+    <a href="{{ tag.get_absolute_url }}">
+        <span class="badge badge-light">{{ tag }}</span></a>
+    {% endfor %}
+    <br/><br/>
+{% endif %}
+```
+<br>
+
+#### tag 페이지 생성하기
+- tag를 클릭했을 때 해당 tag의 페이지가 나타나도록 한다.
+ 
+1. tests.py에 tag페이지가 나타나는 함수 test_tag_page를 생성한다.
+```python
+def test_tag_page(self):
+    response = self.client.get(self.tag_django.get_absolute_url())
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    self.navbar_test(soup)
+    self.category_card_test(soup)
+
+    self.assertIn(self.tag_django.name, soup.h1.text)
+    main_area = soup.find('div', id='main-area')
+    self.assertIn(self.tag_django.name, main_area.text)
+
+    self.assertIn(self.post_001.title, main_area.text)
+    self.assertNotIn(self.post_002.title, main_area.text)
+    self.assertIn(self.post_003.title, main_area.text)
+```
+2. urls.py에 tag의 경로를 지정해준다.
+```python
+urlpatterns = [
+    path('tag/<str:slug>/', views.tag_page),
+    path('category/<str:slug>/', views.category_page),
+    path('<int:pk>/', views.PostDetail.as_view()),
+    path('', views.PostList.as_view()),
+]
+```
+
+3. views.py에 태그별 페이지를 반환하는 함수를 생성해준다.
+- category_page 함수와 거의 유사하다.
+```python
+# 태그별 페이지 반환 함수
+def tag_page(request, slug):
+    tag = Tag.objects.get(slug=slug)
+    post_list = tag.post_set.all()
+    return render(
+        request,
+        'blog/post_list.html',
+        {
+            'post_list': post_list,
+            'categories': Category.objects.all(),
+            'no_category_post_count': Post.objects.filter(category=None).count(),
+            'tag': tag
+        }
+    )
+```
+
+4. post_list.html의 h1에 tag가 있으면 tag을 출력해준다.
+- 카테고리와 구분하기 위해 tag를 클릭하면 tag 아이콘과 함께 출력한다.
+```html
+<h1>
+    Blog
+    {% if category %}
+      <span class="badge badge-secondary">{{ category }}</span>
+    {% endif %}
+    {% if tag %}
+      <span class="badge badge-light">
+        <i class="fa-solid fa-tags"></i>
+        {{ tag }}
+        ({{ tag.post_set.count }})</span>
+    {% endif %}
+</h1>
+```
+<br>
+
+### 폼(form)으로 포스트 작성과 수정 기능 구현
+#### CreateView - 폼(form)으로 포스트 작성 페이지 만들기
+1. tests.py에서 포스트 작성할 form을 생성한다.
+```python
+# 폼(form)을 이용한 포스트 작성 페이지 생성
+def test_create_post(self):  
+    response = self.client.get('/blog/create_post/')
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    self.assertEqual('Create Post - Blog', soup.title.text)
+    main_area = soup.find('div', id='main-area')
+    self.assertIn('Create a New Post', main_area.text)
+```
+
+2. views.py에 django의 CreatView을 이용하여 포스트를 생성하는 class를 생성한다.
+- PostCreate 클래스는 모델 Post에서 제목, 소제목, 내용, 대표이미지, 파일 업로드, 카테고리를 field로 갖는다.
+```python 
+class PostCreate(CreateView):
+    model = Post
+    fields = ['title', 'hook_text', 'content', 'head_image', 'file_upload', 'category']
+```
+
+3. urls.py에 /blog/create_post/의 경로를 지정해준다.
+```python
+urlpatterns=[
+    path('create_post/', views.PostCreate.as_view()),   
+]
+```
+
+4. post_form.html 포스트 작성 페이지 생성한다.
+-**multipart/form-data** : 파일 또는 데이터를 보낼 수 있게해준다.
+- Create Post - Blog가 base.html의 title에서 자동 줄바꿈으로 test 문제 발생 !!!
+※ vscode ➡ settings.json 
+formatOnSave: false로 지정하여 저장 시 자동 줄바꿈 안되게 설정
+```json
+"[django-html]": {
+    "editor.formatOnSave": false,
+  }
+```
+또는 ctrl + , 누르고 Format On Save 체크 해제한다.
+- base_full_with.html을 불러온다.
+```html
+{% extends 'blog/base_full_with.html' %}
+
+{% block head_title%}Create Post - Blog{% endblock %}
+{% block main_area %}
+  <h1>Create a New Post</h1>
+  <hr/>
+
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <table>
+      {{ form }}
+      </table>
+      <button type="submit" class="btn btn-dark float-right">Submit</button>
+    </form>
+  {% endblock %}
+```
+
+5. base_full_with.html을 생성한다.
+- base.html에서 오른쪽 카테고리를 제외한 html이다.
+```html
+<!DOCTYPE html>
+{% load static%}
+<html lang="ko">
+
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"/>
+    <title>
+      {% block head_title %}Blog | Do it Django 웹 사이트{% endblock %}
+    </title>
+    <script src="https://kit.fontawesome.com/c85c5556f3.js"></script>
+    <!-- <link href=" {% static 'blog/bootstrap/style.css' %}"> -->
+  </head>
+
+  <body>
+    {% include 'blog/navbar.html'%}
+    <div class="container">
+      <div class="row my-3">
+        <div class="col-12" id="main-area">
+          {% block main_area %}{% endblock %}
+        </div>
+      </div>
+    </div>
+    {% include 'blog/footer.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+
+</html>
+
+```
+<br>
+
+#### GET과 POST
+| GET | POST|
+|:---:|:---:|
+| 간단하게 URL에 필요한 것을 담아서 보낸다. <br> 필요한 것을 URL을 통해 전달 주로, 서버에서 무엇인가를 가져올 때 사용 <br> ex, q=사과를 입력하면 사과를 검색 | URL이 아닌 BOX에 담아서 보낸다. <br> 주로, 서버에게 전달하고 담을 대 사용 <br> ex, 게시글 post에 내용을 입력 |
+
+#### LoginRequiredMixin - 로그인 사용자만 포스트 작성
+#### 1. 비로그인 사용자는 포스트 작성 제한 설정
+- 로그인하지 않은 게시물에 대한 test_create_post_without_login 함수를 생성한다.
+```python 
+def test_create_post_without_login(self):
+    response = self.client.get('/blog/create_post/')
+    self.assertNotEqual(response.status_code, 200)
+```
+#### 2. 로그인한 사용자에게만 포스트 작성 허용 설정
+1. tests.py에서 로그인한 게시물에 대한 함수를 생성한다. 
+- test_create_post 함수를 test_create_post_with_login 함수로 변경한다.
+- 로그인한 사용자에 대해서만 포스트 작성이 가능하다는 조건을 추가해준다.
+```python
+def test_create_post_with_login(self):
+    self.client.login(username='yunju', password='0129')
+    response = self.client.get('/blog/create_post/')
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    self.assertEqual('Create Post - Blog', soup.title.text)
+    main_area = soup.find('div', id='main-area')
+    self.assertIn('Create a New Post', main_area.text)
+```
+
+2. 사용자 로그인 판단은 django에서 제공해주는 LoginRequireMixin을 이용하면 된다.
+- views.py에서 PostCreate함수에 다음을 추가한다.
+```python
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+class PostCreate(LoginRequiredMixin, CreateView):
+    model = Post
+    fields = ['title', 'hook_text', 'content', 'head_image', 'file_upload', 'category']
+```
+
+3. post를 이용하여 새로운 포스트를 생성하고 가장 최근에 생성한 포스트(last_post)에 대해 제대로 생성되었는지 test한다.
+
+**FAILD문제 발생**
+※ self.client.post해서 post를 생성하지않고 이전에 생성한 post가 마지막으로 설정되어 있었다. <br>
+- 그 이유는 <p style="color:red">>client가 "POST"를 수행하지만 실제로 데이터베이스에 저장하지않는다.</p> 따라서 포스트가 생성되지않게 된다.
+- 다음과 같이 코드를 수정했다.
+
+```python
+self.assertEqual(last_post.title, '세 번째 포스트 입니다.')
+self.assertEqual(last_post.content, 'Category가 없는 포스트입니다.')
+```
+
+- 수업 내용 전체 코드
+```python
+self.client.post(
+    '/blog/create_post/',
+    {
+        'title': 'Post Form 만들기',
+        'content': 'Post Form 페이지를 만들어보자!'
+    }
+)
+
+last_post = Post.objects.last()
+self.assertEqual(last_post.title, 'Post Form 만들기')
+self.assertEqual(last_post.content, 'Post Form 페이지를 만들어보자!')
+```
+
+4. 로그인 사용자에 대하여 게시물을 작성할 수 있도록 조건을 준다.
+- tests.py에 로그인 판단 여부를 확인하는 코드를 추가해준다.
+```python
+self.assertEqual(last_post.author.username, 'yunju')
+```
+
+- views.py에 PostCreate함수에 CreateView의 Form_valid을 이용한다.
+- **form_valid** : form의 입력한 내용이 유효한지 판단
+- 로그인한 상태이면, 해당 사용자(author)는 로그인 사용자로 설정
+- 로그인하지 않은 상태이면, blog로 이동
+```python 
+from django.shortcuts import render, redirect
+
+class PostCreate(LoginRequiredMixin, CreateView):
+    model = Post
+    fields = ['title', 'hook_text', 'content',
+              'head_image', 'file_upload', 'category']
+
+    def form_valid(self, form):
+        current_user = self.request.user
+        if current_user.is_authenticated:
+            form.instance.author = current_user
+            return super(PostCreate, self).form_valid(form)
+        else:
+            return redirect('/blog/')
+```
+<br>
+
+#### UserPassesTestMixin - 스태프에게만 포스트 작성 허용
+##### 1. staff 사용자만 포스트 작성 권한 설정
+1. tests.py의 setUp함수에서 초기 yunju사용자에게는 staff권한을 부여하고 subin사용자는 staff권한이 없도록 설정해준다.
+- SetUp함수에 다음 코드를 추가해준다.
+```python
+self.user_yunju.is_staff = True
+self.user_yunju.save()
+```
+
+2. test_create_post_with_login 함수에서 subin사용자는 포스트 작성을 할 수 없고 yunju사용자는 포스트 작성을 할 수 있도록 변경해준다.
+- 사용자가 'subin'일 때, 200이 되서는 안된다.
+- 사용자가 'yunju'일 때, 200이 되고 포스트를 작성할 수 있다.
+```python
+self.client.login(username='subin', password='cute0313')
+response = self.client.get('/blog/create_post/')
+self.assertNotEqual(response.status_code, 200)
+
+self.client.login(username='yunju', password='0129')
+response = self.client.get('/blog/create_post/')
+self.assertEqual(response.status_code, 200)
+```
+- 현재 사용자는 'yunju'인지 확인한다.
+```python
+self.assertEqual(last_post.author.username, 'yunju')
+```
+
+3. views.py의 PostCreate함수에 UserPassesTestMixin을 이용하여 특정 사용자를 지정한다. 
+- PostCreate 함수에 UserPassessTestMixin을 추가해준다.
+- PostCreate 함수에 들어온 것은 이미 로그인한 사용자임
+```python
+from django.contrib.auth.mixins import UserPassesTestMixin
+
+class PostCreate(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+```
+
+- test_func함수는 superuser 또는 staff인 사용자만 통과시킨다.
+```python
+def test_func(self):
+    return self.request.user.is_superuser or self.request.user.is_staff
+```
+
+4. form_valid 함수에서 로그인이 되어있고 그 사용자가 staff, super사용자인지 검사하는 내용 추가한다.
+- 외부에서 해킹툴로 포스트를 쏘거나 광고가 쌓이는 것을 방지한다.
+```python
+def form_valid(self, form):
+    current_user = self.request.user
+    if current_user.is_authenticated and (current_user.is_staff or current_user.is_superuser):
+        form.instance.author = current_user
+        return super(PostCreate, self).form_valid(form)
+    else:
+        return redirect('/blog/')
+```
+<br>
+
+##### 2. 포스트 작성 버튼 생성
+1. post_list.html에 버튼을 생성한다.
+- blog 제목이 나오기 전이므로 main-area다음에 버튼을 위치시킨다.
+```html
+<button type="button" class="btn btn-dark btn-sm float-right"><i class="fa-solid fa-pencil"></i>&nbsp; New Post</button>
+```
+
+2. New Post버튼을 클릭하면 게시글 작성 페이지로 이동하도록 설정한다.
+- url을 설정하기위해 button ➡ a링크 변경
+- href에 post작성 url로 설정
+```html
+<a type="button" href="/blog/create_post/" class="btn btn-dark btn-sm float-right"><i class="fa-solid fa-pencil"></i>&nbsp; New Post</a>
+```
+
+3. 로그인한 사용자이며 staff or superuser사용자만 작성하도록 권한 설정
+- 시크릿 창을 통해 접속해보면 New Post 버튼이 안보이는 것을 확인할 수 있다.
+- **&nbsp** : space를 누른 효과(띄어쓰기)
+```html
+{% if user.is_authenticated %}
+    {% if user.is_superuser or user.is_staff %}
+        <a type="button" href="/blog/create_post/" class="btn btn-dark btn-sm float-right"><i class="fa-solid fa-pencil"></i>&nbsp; New Post</a>
+    {% endif %}
+{% endif %}
+```
+
+#### UpdateView - 포스트 수정 페이지 만들기
+- 포스트 수정 내용에 대해 업데이트해준다.
+- test_update_post 함수를 생성하여 다음 작업을 수행한다.
+- url은 post3의 기본키를 사용한다.
+```python
+def test_update_post(self):
+    update_post_url = f'/blog/update_post/{self.post_003.pk}/'
+```
+##### 1. 로그인하지 않은 상태에서 접근하는 경우
+```python
+response = self.client.get(update_post_url)
+self.assertNotEqual(response.status_code, 200)
+```
+##### 2. 로그인 했지만, 작성자가 아닌 경우
+```python
+self.assertNotEqual(self.post_003.author, self.user_yunju)
+self.client.login(username='yunju', password='0129')
+response = self.client.get(update_post_url)
+self.assertNotEqual(response.status_code, 200)
+```
+##### 3. 게시글 작성자가 수정하는 경우
+1. 동일한 방법으로 작성자인경우 200이 나오도록(정상) 해준다.
+```python
+self.assertEqual(self.post_003.author, self.user_subin)
+self.client.login(username='subin', password='cute0313')
+response = self.client.get(update_post_url)
+self.assertEqual(response.status_code, 200)
+```
+
+2. 정상 사이트 접속하기위해 url을 지정해준다.
+```python
+urlpatterns = [
+    path('update_post/<int:pk>/', views.PostUpdate.as_view()),
+]
+```
+
+3. 해당 url 매핑시 실행되는 PostUpdate함수를 views.py에 생성해준다.
+- PostCreate와 마찬가지로 model은 Post이고 fields는 동일하다.
+- post_form.html에 자동으로 django가 게시글에 대해 반환한다.
+- **dispatch 함수** : 전달된 방식(GET, POST)이 무엇인지 알려준다. 권한이 있는 사용자인지 판단.
+- **PermissionDenied** : 권한이 없는 사용자는 200이 안뜨도록 해준다.
+이때, return ❌ raise ⭕
+
+```python
+from django.core.exceptions import PermissionDenied
+
+class PostUpdate(LoginRequiredMixin, UpdateView):
+    model = Post
+    fields = ['title', 'hook_text', 'content','head_image', 'file_upload', 'category']
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and request.user == self.get_object().author:
+            return super(PostUpdate, self).dispatch(request, *args, **kwargs)
+        else:
+            raise PermissionDenied
+```
+
+4. 게시글을 가져올 때 창 이름도 변경되도록 설정한다.
+- Beautifulsoup을 이용하여 main-area에 Edit Post - Blog와 동일한지 확인하고 Edit Post를 넣어준다.
+```python
+soup = BeautifulSoup(response.content, "html.parser")
+self.assertEqual("Edit Post - Blog", soup.title.text)
+main_area = soup.find('div', id='main-area')
+self.assertIn('Edit Post', main_area.text)
+```
+
+- post_form.html을 복사하여 post_update_form.html을 생성하고 Create를 Edit로 변경하여 'Edit Post'와 동일하게 지정해준다.
+```html
+{% extends 'blog/base_full_with.html' %}
+{% block head_title%}Edit Post - Blog{% endblock %}
+{% block main_area %}
+  <h1>Edit Post</h1>
+  <hr/>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <table>
+      {{ form }}
+      </table>
+      <button type="submit" class="btn btn-dark float-right">Submit</button>
+    </form>
+  {% endblock %}
+```
+
+5. post를 통해 post_003의 게시글을 수정한다.
+- **follow=True** : redirect되는 페이지를 확인할 수 있다.
+```python
+response = self.client.post(
+    update_post_url,
+    {
+        'title': '세 번째 포스트를 수정했습니다.',
+        'content': '안녕 세계? 우리는 하나!',
+        'category': self.category_music.pk
+    },
+    follow=True
+)
+soup = BeautifulSoup(response.content, 'html.parser')
+main_area = soup.find('div', id='main-area')
+self.assertIn('세 번째 포스트를 수정했습니다.', main_area.text)
+self.assertIn('안녕 세계? 우리는 하나!', main_area.text)
+self.assertIn(self.category_music.name, main_area.text)
+```
+
+6. post_detail.html에 게시글 수정버튼을 생성하고 해당 게시글에 대해 수정 가능하게 한다.
+```html
+<!-- 수정버튼 -->
+{% if user.is_authenticated and user == post.author %}
+<a type="button" href="/blog/update_post/{{ post.pk }}" class="btn btn-dark btn-sm float-right"><i class="fa-solid fa-pencil"></i>&nbsp; Edit Post</a>
+{% endif %}
+```
+
+<br>
+
+#### 포스트 작성 페이지에 태그 선택 칸 추가하기
+- 포스트 작성 페이지에서 tag를 text형태로 작성하면 추가되는 방식으로 작업해본다.
+
+1. post_form.html은 포스트 작성 페이지이므로 ctrl+u을 클릭하여 해당 페이지의 상세 정보를 확인 후 다음과 같이 작업한다.
+- tag을 입력하는 text창을 생성한다.
+- tags의 id, name, type을 지정한다.
+
+```html
+<tr>
+    <th><label for="id_tags_str">Tags:</label></th>
+    <td><input type="text" id="id_tags_str" name="tags_str"></td>
+</tr>
+```
+
+2. test.py의 test_create_post_with_login함수에서 tag가 있는지 찾아보는 코드를 추가한다.
+- 이미 있는 tag는 연결만 해주고 없으면 새로 생성한다.
+
+```python
+ tag_str_input = main_area.find('input', id='id_tags_str')
+self.assertTrue(tag_str_input)
+self.client.post(
+    '/blog/create_post/',
+    {
+        'title': 'Post Form 만들기',
+        'content': 'Post Form 페이지를 만들어보자!',
+        'tags_str': 'new tag; 한글 태그, python'
+    },
+)
+```
+- 새로 생성한 post에 대해서는 new tag, 한글태그, python 총 3개 tag가 존재한다.
+- 이때 구분자 , ; 모두 사용할 수 있도록 해준다.
+- 전체 태그는 현재 파이썬공부, django, python 태그에서 new tag, 한글 태그가 추가되므로 총 5개 tag가 존재해야한다.
+```python
+self.assertEqual(last_post.tags.count(), 3)
+self.assertTrue(Tag.objects.get(name='new tag'))
+self.assertTrue(Tag.objects.get(name='한글 태그'))
+self.assertTrue(Tag.objects.get(name='python'))
+self.assertEqual(Tag.objects.count(), 5)
+```
+
+3. views.py의 form_valid함수에서 tag가 존재하면 tag를 표시하고 없으면 표시하지 않는 작업을 해준다.
+```python
+def form_valid(self, form):
+    current_user = self.request.user
+    if current_user.is_authenticated and (current_user.is_staff or current_user.is_superuser):
+        form.instance.author = current_user
+        response = super(PostCreate, self).form_valid(form)
+        
+        tags_str = self.request.POST.get('tags_str')
+        if tags_str:
+            tags_str = tags_str.strip()
+            tags_str = tags_str.replace(',', ';')
+            tags_list = tags_str.split(';')
+
+            for t in tags_list:
+                t = t.strip()
+                tag, is_tag_created = Tag.objects.get_or_create(name=t)
+                if is_tag_created:
+                    tag.slug = slugify(t, allow_unicode=True)
+                    tag.save()
+                self.object.tags.add(tag)
+        return response
+    else:
+        return redirect('/blog/')
+```
+- 입력받은(post) tag들을 tags_str이라고 한다.
+- **strip()** : tags_str의 띄어쓰기(공백)을 제거해준다.
+- **replace()** : 구분자(, ;)를 ";"으로 모두 통합한 후 ";"를 기준으로 분리한다.
+- **get_or_create** : name=t인 것이 있으면 가져오고 없으면 t로 이름을 만들고 가져온다.
+**tag** : 기존 혹은 만든 것에 대한 결과
+**is_tag_created** : 기존(True), 만든것(False) 반환
+
+4. 만약 tag가 새롭게 만들어진 것이라면 tag의 slug를 채워줘서 고유의 tag페이지를 이동할 수 있게 해준다.
+**slugify()** : slug에 할당하도록 해주는 함수
+**allow_unicode** : 한글지원
