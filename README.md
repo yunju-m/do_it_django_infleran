@@ -72,6 +72,37 @@ $ python manage.py startapp single_pages
 $ pip install beautifulsoup4
 ```
 
+### django-crispy-forms 설치
+- 해당 실행환경 설정을 수행한 후 폼(form)을 꾸며본다.
+- 줄간격, 크기 맞게 조절해주는 기능
+[**외부 라이브러리를 이용한 django페이지 꾸미기**](#폼form-모양-예쁘게-개선하기)
+1. django-crispy-forms 설치
+- 현재 bootstrap4을 이용하고 있으므로 crispy_bootstrap4 설치도 필요하다!!
+```shell
+$ pip install django-crispy-forms
+$ python.exe -m pip install --upgrade pip
+$ pip install crispy-bootstrap4
+```
+
+2. [settings.py에 "crispy_forms" 추가](#새로운-앱-프로젝트-setting)
+
+3. settings.py에 템플릿 패키기 기본 값 설정
+```python
+INSTALLED_APPS = (
+    ...
+    'crispy_forms', 
+    'crispy_bootstrap4',
+)
+```
+- 이 프로젝트는 부트스트랩을 사용한다.
+```python
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+``` 
+만약 crispy-forms을 사용하려면 변경해주면된다.
+```python
+CRISPY_TEMPLATE_PACK = 'uni_form'
+```
+
 ### django shell 성능 향상 기능
 [**django shell_plus 이용한 다대일구조 확인**](#django-shell로-다대일구조-연결-확인)
 ```shell
@@ -92,6 +123,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     
     "django_extensions",
+    "crispy_forms",
     "blog",
     "single_pages",
 ]
@@ -2090,4 +2122,40 @@ def form_valid(self, form):
                 tag.save()
             self.object.tags.add(tag)
     return response
+```
+<br>
+
+### 외부 라이브러리 활용하기
+#### 폼(form) 모양 예쁘게 개선하기
+- **[django-crispy-forms](https://django-crispy-forms.readthedocs.io/en/latest/)** 사이트 이용
+- [실행환경](#django-crispy-forms-설치)에서 django-crispy-forms의 환경설정을 해준다.
+
+1. post_form.html에 crispy-forms를 적용시키기 위해 다음 코드를 추가해준다.
+- 먼저, **{% load crispy_forms_tags %}**로 crispy를 불러온다.
+- 그다음, crispy를 추가한 {{ form | crispy }} 라고 수정한다.
+- tr → div 변경 / th, td 제거
+```html
+{% extends 'blog/base_full_with.html' %}
+{% load crispy_forms_tags %}
+{% block head_title%}Create Post - Blog{% endblock %}
+
+{% block main_area %}
+  <h1>Create a New Post</h1>
+  <hr/>
+
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <table>
+      {{ form | crispy }}
+      <div id="div_id_tags_str">
+        <label for="id_tags_str">Tags:</label>
+        <input type="text" id="id_tags_str" name="tags_str" class="textinput textInput form-control">
+      </div>
+      </table>
+      <button type="submit" class="btn btn-dark float-right">Submit</button>
+    </form>
+  {% endblock %}
+```
+2. 마찬가지로 post_update_form.html에 crispy-forms를 적용시키기 위해 위와 같은 작업을 해준다.
+```html
+
 ```

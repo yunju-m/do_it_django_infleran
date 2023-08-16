@@ -249,7 +249,7 @@ class TestView(TestCase):
         last_post = Post.objects.last()
         self.assertEqual(last_post.title, 'Post Form 만들기')
         self.assertEqual(last_post.author.username, 'yunju')
-        self.assertEqual(last_post.content, 'Post Form 페이지 만들어보자!')
+        self.assertEqual(last_post.content, 'Post Form 페이지를 만들어보자!')
         
         self.assertEqual(last_post.tags.count(), 3)
         self.assertTrue(Tag.objects.get(name='new tag'))
