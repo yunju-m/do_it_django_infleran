@@ -37,13 +37,23 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "django_extensions",
+    'django.contrib.sites',
+
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+
     "crispy_forms",
     "crispy_bootstrap4",
+
     "markdownx",
+    
     "blog",
     "single_pages",
+
+    
 ]
 
 MIDDLEWARE = [
@@ -134,3 +144,18 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, '_media')
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+SITE_ID = 1
+# 가입할 때 이메일 주소를 받을 것인지 결정한다.
+ACCOUNT_EMAIL_REQUIRED = True
+# 가입할 때 본인 확인하는 주소는 없이 가입가능하게한다.
+ACOOUNT_EMAIL_VERIFICATION = 'none'
+
+# 로그인 성공시 이동할 url 설정
+LOGIN_REDIRECT_URL = '/blog/'

@@ -128,6 +128,75 @@ urlpatterns = [
     path('markdownx/', include('markdownx.urls')),
 ]
 ```
+### django-allauth 설치
+[django-allauth를 이용한 소셜 로그인](#소셜-로그인-구현하기)
+사이트 : https://django-allauth.readthedocs.io/en/latest/
+
+1. django-allauth를 설치한다.
+```shell
+$ pip install django-allauth
+```
+
+2. INSTALLED_APPS에서 기본 추가해야할 코드와 구글로 로그인할 경우에 필요한 코드를 추가해준다.
+(여러 종류가 있으므로 때에 따라 필요한 것을 추가)
+```shell
+INSTALLED_APPS = (
+    'django.contrib.sites',
+
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',   
+)
+```
+
+- AUTHENTICATIONS_BACKENDS에 없으면 다음 코드를 추가해준다.
+```shell
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+```
+
+- TEMPLATES에 해당 코드가 없으면 추가해준다.
+```shell
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+            ],
+        },
+    },
+]
+```
+
+-  SITE_ID 지정 코드를 추가해준다.
+- 가입할 때 이메일 주소를 받을 것인지 결정한다.
+- 가입할 때 본인 확인하는 주소는 없이 가입가능하게한다.
+```shell
+SITE_ID = 1
+ACCOUNT_EMAIL_REQUIRED = True
+ACOOUNT_EMAIL_VERIFICATION = 'none'
+```
+
+3. do_it_django앱의 urls.py에 path를 지정해준다.
+```python
+urlpatterns = [
+    ...
+    path('accounts/', include('allauth.urls')),
+    ...
+]
+```
+
+4. 계정과 관련된 정보를 추가하기위해 migrate작업을 수행해준다.
+```shell
+$ python manage.py migrate
+```
 
 ### django shell 성능 향상 기능
 [**django shell_plus 이용한 다대일구조 확인**](#django-shell로-다대일구조-연결-확인)
@@ -2255,3 +2324,93 @@ def get_content_markdown(self):
 ```html
 <p class="card-text">{{p.get_content_markdown | truncatewords_html:45 | safe }}</p>
 ```
+
+#### 소셜 로그인 구현하기
+##### 1. 구글 로그인 구현하기
+1. [실행환경](#django-allauth-설치)에서 django-allauth을 설치한다.
+
+2. 구글을 이용한 OAuth 클라이언트를 생성한다.
+사이트 : https://django-allauth.readthedocs.io/en/latest/providers.html#django-configuration
+
+    2-1. 먼저, 다음 [사이트](https://console.developers.google.com/)에 접속하여 로그인한다.
+    
+    2-2. Google Clude옆에 드롭아웃(프로젝트만들기) > 새프로젝트를 클릭하여 생성한다.
+    ※ 이때, 프로젝트 이름은 변경 불가능하다.
+    ex, Do It Django Inflearn 2023
+    
+    2-3. 생성된 프로젝트에 대해 왼쪽 OAuth 동의 화면 카테고리 > 사용자 유형은 "외부"로 설정한다.
+    
+    2-4. 다음과 같이 기입한 후 저장후 계속 버튼 클릭한다.
+    앱이름 : Do It Django Inflearn 2023 (예시)
+    사용자 지원 이메일 : 로그인한 구글 이메일
+    개발자 연락처 정보 : 로그인한 구글 이메일
+
+    2-5. 왼쪽에 사용자 인증 정보 카테고리 > 사용자 인증 정보 만들기 > OAuth 클라이언트 ID 만들기 선택한다.
+
+    2-6. 다음과 같이 설정한 후 만들기 버튼 클릭한다.
+    애플리케이션 유형 : 웹 애플리케이션 
+    이름 : Do It Django Inflearn 2023 (예시)
+    승인된 자바스크립트 원본 > URI추가 : http://127.0.0.1:8000
+    - 아직 도메인 없고 로컬에서만 확인
+    승인된 리다이렉션 URI : http://127.0.0.1:8000/accounts/google/login/callback/
+
+    2-7. OAuth 클라이언트가 생성된다.
+    ※ 이때, 클라이언트 ID, PW는 노출되서는 안된다.
+
+3. admin 페이지에 접속하여 Sites에서 domain, display 이름을 example.com → **127.0.0.1:8000**으로 변경한다.
+
+4. 로그인 버튼을 클릭할 때 구글로그인 버튼을 활성화하는 작업을 수행한다.
+    4-1. navbar.html에서 맨 상단에 다음 코드를 추가한다.
+    ```html
+    {% load socialaccount %}
+    ```
+    
+    4-2. 구글버튼에 대해서 a태그로 다음과 같이 변경한다.
+    - google 로그인으로 갈 수 있는 url을 연결해준다.
+    ```html
+    <a roll="button" href="{% provider_login_url 'google' %}" type="button" class="btn btn-outline-dark btn-block btn-sm">
+        <i class="fa-brands fa-google"></i>
+        Log in with Google
+    </a>
+    ```
+
+    4-3. social app과 연동해주기 위해 admin 사이트 → social applications → add social applications
+    - 이때, settings.py에 **allauth.socialaccount.provider.google**만 추가해주었기 때문에 현재 google 창만 선택이 가능하다.
+    **provider** : google
+    **Name** : google
+    **Client ID** : OAuth 클라이언트 ID
+    **Secret Key** : OAuth 클라이언트 PW
+    **site** : 이용가능한 주소 이동
+    
+    4-4. save버튼 클릭
+    4-5. 로그인 시도하면 로그인이 정상적으로 작동
+    만약 로그아웃을 하고싶다면?
+    **http://127.0.0.1:8000/accounts/logout/**
+
+5. settings.py에 로그인 성공 시 이동할 페이지 설정
+- not found page 에러 발생
+```python
+LOGIN_REDIRECT_URL = '/blog/'
+```
+
+##### 2. 로그인 된 사용자 정보 출력 및 로그아웃 드롭다운 구현
+- navbar.html에서 로그인이 되어있으면 사용자 이름과 드롭다운 로그아웃 버튼을 생성하고 그렇지않으면 로그인 버튼이 나타나도록 해준다.
+```html
+{% if user.is_authenticated %}
+<li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false">
+    {{ user.username }}
+    </a>
+    <div class="dropdown-menu">
+        <a class="dropdown-item" href="/accounts/logout/">Log Out</a>
+    </div>
+</li>
+{% else %}
+<li class="nav-item">
+    <a class="nav-link" href="#" data-toggle="modal" data-target="#loginModal">Log In</a>
+</li>
+{% endif %}
+```
+
+- admin 사이트에 Users, social accounts에 google로 로그인한 사용자에 정보가 들어오는 것을 확인할 수 있다.
+- 이때, 이 사용자는 관리자 권한X, 일반 사용자O
