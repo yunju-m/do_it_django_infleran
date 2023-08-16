@@ -16,5 +16,8 @@
   "[django-html]": {
     "editor.formatOnSave": false,
     "editor.defaultFormatter": "Glavin001.unibeautify-vscode"
-  }
+  },
+  "python.analysis.extraPaths": [
+    "./django-markdownx"
+  ]
 }

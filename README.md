@@ -77,6 +77,7 @@ $ pip install beautifulsoup4
 - 줄간격, 크기 맞게 조절해주는 기능
 [**외부 라이브러리를 이용한 django페이지 꾸미기**](#폼form-모양-예쁘게-개선하기)
 1. django-crispy-forms 설치
+- 사이트 : https://django-crispy-forms.readthedocs.io/en/latest/index.html
 - 현재 bootstrap4을 이용하고 있으므로 crispy_bootstrap4 설치도 필요하다!!
 ```shell
 $ pip install django-crispy-forms
@@ -101,6 +102,31 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 만약 crispy-forms을 사용하려면 변경해주면된다.
 ```python
 CRISPY_TEMPLATE_PACK = 'uni_form'
+```
+
+### django markdownx 마크다운 설치하기
+[django markdownx 적용하기](#django-markdownx---마크다운-적용하기)
+1. django 마크다운을 설치한다.
+사이트: https://neutronx.github.io/django-markdownx/
+```shell
+$ python -m pip install django-markdownx
+$ git clone https://github.com/adi-/django-markdownx.git
+$ cd django-markdownx/
+$ python3 setup.py install
+```
+
+2. settings.py에 markdownx를 추가해준다.
+```shell
+INSTALLED_APPS = (
+    'markdownx',
+)
+```
+
+3. do_it_django앱의 urls.py에 다음 path를 추가해준다.
+```shell
+urlpatterns = [
+    path('markdownx/', include('markdownx.urls')),
+]
 ```
 
 ### django shell 성능 향상 기능
@@ -2176,4 +2202,56 @@ def form_valid(self, form):
     </form>
   {% endblock %}
 
+```
+
+#### django markdownx - 마크다운 적용하기
+1. [실행환경](#django-markdownx-마크다운-설치하기)에서 django markdownx 마크다운을 설치한다.
+
+2. blog앱의 models.py에서 Post함수에 content를 markdownxField로 변경한다.
+```python
+from markdownx.models import MarkdownxField
+
+class Post(models.Model):
+    title = models.CharField(max_length=50)
+    hook_text = models.CharField(max_length=100, blank=True)
+    content = MarkdownxField()
+    ...
+```
+
+3. model의 내용이 변경되었으므로 다음작업을 수행해준다.
+```shell
+$ python manage.py makemigrations
+$ python manage.py migrate
+```
+
+4. post_form.html에서 마지막 {% endblock %} 위에 {{ form.media }}를 추가해준다.
+```html
+{{ form.media }}
+```
+그러면 이제 게시글작성(New post)를 수행하고 content에 내용을 입력한 후 enter키를 누르면 줄바꿈이 적용되는 것을 알 수 있다.
+
+5. 이제 마크다운으로 작성된 content가 출력되는 함수 get_content_markdown을 생성한다.
+models.py에 get_content_markdown함수를 다음과 같이 추가한다.
+```python
+# markdown 적용된 content 출력하는 함수
+def get_content_markdown(self):
+    return markdown(self.content)
+```
+
+6. post_detail.html에 post.content → post.get_content_markdown으로 변경한다.
+- **safe** : html태그를 없애준다.
+```html
+<!-- Post Content -->
+<p>{{ post.get_content_markdown | safe }}</p>
+```
+
+7. post_list.html에서도 p.content → p.get_content_markdown으로 변경한다.
+- truncatewords → truncatewords_html로 변경
+<변경전>
+```html
+<p class="card-text">{{p.content | truncatewords:45}}</p>
+```
+<변경후>
+```html
+<p class="card-text">{{p.get_content_markdown | truncatewords_html:45 | safe }}</p>
 ```
