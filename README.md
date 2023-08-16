@@ -2414,3 +2414,25 @@ LOGIN_REDIRECT_URL = '/blog/'
 
 - admin 사이트에 Users, social accounts에 google로 로그인한 사용자에 정보가 들어오는 것을 확인할 수 있다.
 - 이때, 이 사용자는 관리자 권한X, 일반 사용자O
+
+#### 이메일 회원가입 & username 로그인 기능 만들기
+
+1. navbar.html에서 Log in with Username, Sign up with E-mail에 대해서도 button → a 링크로 변경하고 roll은 button으로 설정하고 href를 다음과 같이 지정해준다.
+```html
+<div class="col-md-6 col-sm-12">
+    <a roll="button" href="{% provider_login_url 'google' %}" type="button" class="btn btn-outline-dark btn-block btn-sm">
+        <i class="fa-brands fa-google"></i>
+        Log in with Google
+    </a>
+    <a roll="button" href="/accounts/login/" type="button" class="btn btn-outline-dark btn-block btn-sm">
+        <i class="fa-regular fa-user"></i>
+        Log in with Username
+    </a>
+</div>
+<div class="col-md-6 col-sm-12">
+    <a roll="button" href="/accounts/signup/" type="button" class="btn btn-outline-dark btn-block btn-sm">
+        <i class="fa-regular fa-envelope"></i>
+        Sign up with E-mail
+    </a>
+</div>
+```
