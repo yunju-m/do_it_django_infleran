@@ -2157,5 +2157,23 @@ def form_valid(self, form):
 ```
 2. 마찬가지로 post_update_form.html에 crispy-forms를 적용시키기 위해 위와 같은 작업을 해준다.
 ```html
+{% extends 'blog/base_full_with.html' %}
+{% load crispy_forms_tags %}
+{% block head_title%}Edit Post - Blog{% endblock %}
+{% block main_area %}
+  <h1>Edit Post</h1>
+  <hr/>
+
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <table>
+      {{ form | crispy }}
+      </table>
+      <div id="div_id_tags_str">
+        <label for="id_tags_str">Tags:</label>
+        <input type="text" id="id_tags_str" name="tags_str" class="textinput textInput form-control" value="{{ tags_str_default }}">
+      </div>
+      <button type="submit" class="btn btn-dark float-right">Submit</button>
+    </form>
+  {% endblock %}
 
 ```
