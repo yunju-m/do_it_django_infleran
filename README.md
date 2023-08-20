@@ -2534,7 +2534,8 @@ def get_absolute_url(self):
         return f'{self.post.get_absolute_url()}#comment-{self.pk}'
 ```
 
-#### 댓글 작성 폼 구현하기 - 로그인 안한 상태
+#### 댓글 작성 폼 구현하기
+##### 1. 로그인 안한 상태
 - 로그인한 사용자만 댓글을 작성할 수 있도록 설정하는 작업을 수행한다.
 1. tests.py에 test_comment_form 함수를 생성하여 로그인 여부에 따른 댓글 작성을 설정해준다.
 - 댓글이 존재해야 확인이 가능하므로 setup함수에서 생성한 댓글을 이용한다.
@@ -2577,4 +2578,154 @@ def test_comment_form(self):
       {% endif %}
     </div>
   </div>
+```
+
+##### 2. 로그인 한 상태
+1. tests.py의 test_comment_form 함수에 로그인 여부에 따른 댓글 작성을 설정해준다.
+- 로그인 한 경우 댓글창이 보이도록 설정
+```python
+# 로그인 한 상태
+self.client.login(username='yunju', password='0129')
+response = self.client.get(self.post_001.get_absolute_url())
+self.assertEqual(response.status_code, 200)
+soup = BeautifulSoup(response.content, 'html.parser')
+
+comment_area = soup.find('div', id='comment-area')
+self.assertNotIn('Log in and leave a comment', comment_area.text)
+
+comment_form = comment_area.find('form', id='comment-form')
+self.assertTrue(comment_form.find('textarea', id='id_content'))
+response = self.client.post(
+    self.post_001.get_absolute_url() + 'new_comment/',
+    {
+        'content': '윤주의 댓글입니다.'
+    },
+    follow=True
+)
+
+self.assertEqual(response.status_code, 200)
+self.assertEqual(Comment.objects.count(), 2)
+self.assertEqual(self.post_001.comment_set.count(), 2)
+
+new_comment = Comment.objects.last()
+soup = BeautifulSoup(response.content, 'html.parser')
+self.assertIn(new_comment.post.title, soup.title.text)
+
+comment_area = soup.find('div', id='comment-area')
+new_comment_div = comment_area.find('div', id=f'comment-{new_comment.pk}')
+self.assertIn('yunju', new_comment_div.text)
+self.assertIn('윤주의 댓글입니다.', new_comment_div.text)
+```
+2. Form을 이용하여 댓글 기능 구현
+- 포스트 생성할 때는 views.py에 field를 이용하여 구현했다.
+- 이번엔 forms를 이용하여 댓글 기능을 구현해본다.
+
+    2-1. blog앱에 forms.py를 생성하고 다음을 입력한다.
+    ```python
+    from .models import Comment
+    from django import forms
+
+    class CommentForm(forms.ModelForm):
+        class Meta:
+            model = Comment
+            fields = ('content',)
+    ```
+
+    2-2. views.py의 PostDetail함수에서 다음을 추가한다.
+    ```python
+    from .forms import CommentForm
+
+    context['comment_form'] = CommentForm
+    ```
+
+    2-3. post_detail.html에 넘겨받은 comment_form을 출력해준다.
+    - form의 method방식은 POST라고 지정
+    - POST발생 시 보낼 URL지정
+    ```html
+    <!-- Comments Form -->
+    <div id="comment-area">
+    <div class="card my-4">
+        <h5 class="card-header">Leave a Comment:</h5>
+        <div class="card-body">
+        {% if user.is_authenticated %}
+         <form id="comment-form" method="POST" action="{{ post.get_absolute_url }}new_comment/">
+            <div class="form-group">
+            {{ comment_form }}
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+        {% else %}
+            <a roll="button" type="button" class="btn btn-outline-dark btn-block btn-sm" href="#" data-toggle="modal" data-target="#loginModal">Log in and leave a comment</a>
+        {% endif %}
+        </div>
+    </div>
+    ```
+    
+    2-4. urls.py에 보낸 URL에 대한 동작을 지정해준다.
+    ```python
+    path('<int:pk>/new_comment/', views.new_comment)
+    ```
+
+    2-5. views.py에 new_comment함수를 생성해준다.
+    - get_object_or_404 함수 : 해당 pk가 존재하지않으면 404에러를 사용자에게 보내준다. 
+    - POST인 경우 댓글(comment)를 바로 저장하지않고 내용과 작성자를 저장한 후 db에 저장한다.
+    ```python
+    from django.shortcuts import get_object_or_404
+
+    def new_comment(request, pk):
+    if request.user.is_authenticated:
+        post = get_object_or_404(Post, pk=pk)
+
+        if request.method == 'POST':
+            comment_form = CommentForm(request.POST)
+            if comment_form.is_valid():
+                comment = comment_form.save(commit=False)
+                comment.post = post
+                comment.author = request.user
+                comment.save()
+                return redirect(comment.get_absolute_url())
+        return redirect(post.get_absolute_url())
+    else:
+        return PermissionError
+    ```
+
+3. csrf 오류 해결
+- django가 만든 form인지, 누군가 form을 만든것인지 구분하기위해 csrf토큰 사용
+- post_detail.html에 csrf토큰이 있는지 확인한다.
+
+```html
+<!-- Comments Form -->
+<div id="comment-area">
+  <div class="card my-4">
+    <h5 class="card-header">Leave a Comment:</h5>
+    <div class="card-body">
+      {% if user.is_authenticated %}
+      <form id="comment-form" method="POST" action="{{ post.get_absolute_url }}new_comment/">
+        {% csrf_token %}
+        <div class="form-group">
+          {{ comment_form | crispy }}
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+      {% else %}
+        <a roll="button" type="button" class="btn btn-outline-dark btn-block btn-sm" href="#" data-toggle="modal" data-target="#loginModal">Log in and leave a comment</a>
+      {% endif %}
+    </div>
+  </div>
+```
+
+4. 댓글 form을 좀 더 예쁘게 구현하기 위해 crispy 사용
+- 맨위에 crispy를 사용하기위한 라이브러리를 불러온다.
+- Comment Form 부분에 crispy를 추가해준다.
+
+```html
+{% load crispy_forms_tags %}
+
+ <form id="comment-form" method="POST" action="{{ post.get_absolute_url }}new_comment/">
+    {% csrf_token %}
+    <div class="form-group">
+        {{ comment_form | crispy }}
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
 ```
