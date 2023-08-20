@@ -1,7 +1,7 @@
 from time import sleep
 from django.test import TestCase, Client
 from bs4 import BeautifulSoup
-from .models import Post, Category, Tag
+from .models import Post, Category, Tag, Comment
 from django.contrib.auth.models import User
 
 
@@ -61,6 +61,12 @@ class TestView(TestCase):
         )
         self.post_003.tags.add(self.tag_django)
         self.post_003.tags.add(self.tag_python)
+
+        self.comment_001 = Comment.objects.create(
+            post = self.post_001,
+            author = self.user_yunju,
+            content = "첫 번째 댓글입니다."
+        )
 
     # 내비게이션바 함수
     def navbar_test(self, soup):
@@ -179,6 +185,11 @@ class TestView(TestCase):
         self.assertNotIn(self.tag_python.name, post_area.text)
         self.assertNotIn(self.tag_python_kar.name, post_area.text)
 
+        comments_area = soup.find('div', id='comment-area')
+        comment_001_area = comments_area.find('div', id='comment-1')
+        self.assertIn(self.comment_001.author.username, comment_001_area.text) 
+        self.assertIn(self.comment_001.content, comment_001_area.text) 
+
     # 카테고리별 페이지 나타내는 함수
     def test_category_page(self):
         response = self.client.get(
@@ -247,6 +258,7 @@ class TestView(TestCase):
         )
         
         last_post = Post.objects.last()
+
         self.assertEqual(last_post.title, 'Post Form 만들기')
         self.assertEqual(last_post.author.username, 'yunju')
         self.assertEqual(last_post.content, 'Post Form 페이지를 만들어보자!')

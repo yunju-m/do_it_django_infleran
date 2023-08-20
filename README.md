@@ -2467,3 +2467,69 @@ $ python manage.py migrate
 from .models import Post, Category, Tag, Comment
 admin.site.register(Comment)
 ```
+
+#### 포스트 상세 페이지에 댓글 기능 반영하기
+1. post_detail.html에 Single Comment부분이 댓글을 작성하는 부분이다.
+- 이 부분을 우리가 작성한 댓글이 나타나도록 수정하는 test코드를 작성해본다. 
+
+```html
+<!-- Single Comment -->
+<div class="media mb-4">
+    <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt=""/>
+    <div class="media-body">
+        <h5 class="mt-0">Commenter Name</h5>
+        Cras sit amet nibh libero, in gravida nulla. Nulla vel metus scelerisque ante sollicitudin. Cras purus odio, vestibulum in vulputate at, tempus viverra turpis. Fusce condimentum nunc ac nisi vulputate fringilla. Donec lacinia congue felis in faucibus.
+    </div>
+</div>
+```
+
+2. tests.py에 SetUp 함수에 댓글(Comment)을 생성해준다.
+```python
+self.comment_001 = Comment.objects.create(
+    post = self.post_001,
+    author = self.user_yunju,
+    content = "첫 번째 댓글입니다."
+)
+```
+
+3. 상세 페이지(test_post_detail) 함수에 댓글의 내용이 들어가게 해준다.
+- post_detail.html에 id가 comment_area인 댓글 영역을 찾아온다.
+- post_detail.html에 댓글 하나(single comment) 영역에 작성자와 작성내용이 있는지 확인한다.
+```python
+comments_area = soup.find('div', id='comment-area')
+comment_001_area = comments_area.find('div', id='comment-1')
+self.assertIn(self.comment_001.author.username, comment_001_area.text) 
+self.assertIn(self.comment_001.content, comment_001_area.text) 
+```
+
+4. post_detail.html에 post의 작성된 댓글이 있는 경우에 댓글작성(Single Comment)을 수행한다.
+- 대댓글이 달리는 영역 Comment with nested commnets는 삭제해준다.
+- 댓글의 id는 pk로 지정해준다.
+- 작성자 이름, 댓글 내용을 설정해준다.
+    **linebreaks** : 줄바꿈 적용
+- 댓글 작성일을 표현한다.
+    &nbsp; : 띄어쓰기
+    bootstrap에서 제공하는 **class="text-muted"** 사용하여 흐리게 표현
+
+```html
+{% if post.comment_set.exists %}
+    {% for comment in post.comment_set.iterator %}
+    <!-- Single Comment -->
+    <div class="media mb-4" id="comment-{{ comment.pk }}">
+        <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt=""/>
+        <div class="media-body">
+            <h5 class="mt-0">{{ comment.author.username }} &nbsp; &nbsp; <small class="text-muted">{{ comment.created_at }} </small></h5>
+            {{ comment.content | linebreaks }}
+        </div>
+    </div>
+    {% endfor %}
+{% endif %}
+```
+
+5. models.py에서 Comment모델에 작성된 댓글을 바로 보는 url링크를 추가해준다.
+- admin사이트에 댓글(Comments)에 view on site 버튼이 생성됨
+- 클릭 시 해당 댓글 영역으로 이동
+```python
+def get_absolute_url(self):
+        return f'{self.post.get_absolute_url()}#comment-{self.pk}'
+```
