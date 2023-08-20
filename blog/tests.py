@@ -62,6 +62,7 @@ class TestView(TestCase):
         self.post_003.tags.add(self.tag_django)
         self.post_003.tags.add(self.tag_python)
 
+        # 댓글 생성
         self.comment_001 = Comment.objects.create(
             post = self.post_001,
             author = self.user_yunju,
@@ -189,6 +190,20 @@ class TestView(TestCase):
         comment_001_area = comments_area.find('div', id='comment-1')
         self.assertIn(self.comment_001.author.username, comment_001_area.text) 
         self.assertIn(self.comment_001.content, comment_001_area.text) 
+
+    # 로그인한 사용자만 댓글 작성 가능하게 하는 함수
+    def test_comment_form(self):
+        self.assertEqual(Comment.objects.count(), 1)
+        self.assertEqual(self.post_001.comment_set.count(), 1)
+
+        # 로그인 하지 않은 상태
+        response = self.client.get(self.post_001.get_absolute_url())
+        self.assertEqual(response.status_code, 200)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        comment_area = soup.find('div', id='comment-area')
+        self.assertIn('Log in and leave a comment', comment_area.text)
+        self.assertFalse(comment_area.find('form', id='comment-form'))
 
     # 카테고리별 페이지 나타내는 함수
     def test_category_page(self):
