@@ -237,6 +237,60 @@ class TestView(TestCase):
         self.assertIn('yunju', new_comment_div.text)
         self.assertIn('윤주의 댓글입니다.', new_comment_div.text)
 
+    # 자신이 작성한 댓글 수정 버튼 생성 함수
+    def test_comment_update(self):
+        comment_by_subin = Comment.objects.create(
+            post=self.post_001,
+            author=self.user_subin,
+            content='수빈의 댓글입니다.'
+        )
+        response = self.client.get(self.post_001.get_absolute_url())
+        self.assertEqual(response.status_code, 200)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        comment_area = soup.find('div', id='comment-area')
+        self.assertFalse(comment_area.find('a', id='comment-1-update-btn'))
+        self.assertFalse(comment_area.find('a', id='comment-2-update-btn'))
+
+        # yunju로 로그인 한 상태
+        self.client.login(username='yunju', password='0129')
+        response = self.client.get(self.post_001.get_absolute_url())
+        self.assertEqual(response.status_code, 200)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        comment_area = soup.find('div', id='comment-area')
+        self.assertTrue(comment_area.find('a', id='comment-1-update-btn'))
+        self.assertFalse(comment_area.find('a', id='comment-2-update-btn'))
+
+        comment_001_update_btn = comment_area.find('a', id='comment-1-update-btn')
+        self.assertIn('edit', comment_001_update_btn.text)
+        self.assertEqual(comment_001_update_btn.attrs['href'], '/blog/update_comment/1/')
+
+        response = self.client.get('/blog/update_comment/1/')
+        self.assertEqual(response.status_code, 200)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        self.assertEqual('Edit Comment - Blog', soup.title.text)
+        update_comment_form = soup.find('form', id='comment-form')
+        content_textarea = update_comment_form.find('textarea', id='id_content')
+        self.assertIn(self.comment_001.content, content_textarea.text)
+        sleep(2)
+
+        response = self.client.post(
+            '/blog/update_comment/1/',
+            {
+                'content': '윤주의 댓글을 수정합니다.'
+            },
+            follow=True
+        )
+
+        self.assertEqual(response.status_code, 200)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        comment_001_div = soup.find('div', id='comment-1')
+        self.assertIn('윤주의 댓글을 수정합니다.', comment_001_div.text)
+        self.assertIn('Updated: ', comment_001_div.text)
+
+    
     # 카테고리별 페이지 나타내는 함수
     def test_category_page(self):
         response = self.client.get(
@@ -305,7 +359,7 @@ class TestView(TestCase):
         )
         
         last_post = Post.objects.last()
-        
+
         self.assertEqual(last_post.title, 'Post Form 만들기')
         self.assertEqual(last_post.author.username, 'yunju')
         self.assertEqual(last_post.content, 'Post Form 페이지를 만들어보자!')

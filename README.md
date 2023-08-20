@@ -2729,3 +2729,186 @@ self.assertIn('윤주의 댓글입니다.', new_comment_div.text)
     <button type="submit" class="btn btn-primary">Submit</button>
 </form>
 ```
+
+#### 댓글 수정 기능 구현하기
+##### 수정 버튼 보이기
+- 자신이 작성한 댓글에 대해서 수정버튼이 보이도록 작업 수행
+
+1. test.py에 test_comment_update 함수를 생성한다.
+- 이전에 댓글 작성자가 yunju라면 이번에는 subin이 작성한 댓글을 생성한다.
+- 댓글 영역에 대해 작성된 댓글들의 수정버튼은 보여서는 안된다.(수빈은 댓글의 작성자가 아니기 때문)
+```python
+# 자신이 작성한 댓글 수정 버튼 생성 함수
+def test_comment_update(self):
+    comment_by_subin = Comment.objects.create(
+        post=self.post_001,
+        author=self.user_subin,
+        content='수빈의 댓글입니다.'
+    )
+    response = self.client.get(self.post_001.get_absolute_url())
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    comment_area = soup.find('div', id='comment-area')
+    self.assertFalse(comment_area.find('a', id='comment-1-update-btn'))
+    self.assertFalse(comment_area.find('a', id='comment-2-update-btn'))
+```
+
+2. 이어서 yunju로 로그인한 경우에 대해 작성한다.
+- 거의 유사한 형태이지만 첫 번째 댓글에 대해 작성자는 yunju이므로 수정버튼이 보이도록 수정해주어야한다.
+- 수정버튼은 a태그로 되어있고 id는 가운데 pk를 가진 고유 수정버튼이다.
+- 수정버튼을 comment_001_update_btn이라 하고 해당 버튼은 'edit' 텍스트를 가진다.
+- 경로는 /blog/update_comment/1/ 로 이동한다.
+```python
+# yunju로 로그인 한 상태
+self.client.login(username='yunju', password='0129')
+response = self.client.get(self.post_001.get_absolute_url())
+self.assertEqual(response.status_code, 200)
+soup = BeautifulSoup(response.content, 'html.parser')
+
+comment_area = soup.find('div', id='comment-area')
+self.assertTrue(comment_area.find('a', id='comment-1-update-btn'))
+self.assertFalse(comment_area.find('a', id='comment-2-update-btn'))
+
+comment_001_update_btn = comment_area.find('a', id='comment-1-update-btn')
+self.assertIn('edit', comment_001_update_btn.text)
+self.assertEqual(comment_001_update_btn.attr['href'], '/blog/update_comment/1/')
+```
+
+3. post_detail.html에 수정(edit)버튼을 생성해준다.
+- 로그인 한 사용자 중 자신이 작성한 댓글에 대해서만 수정버튼이 보여야한다.
+- 수정 버튼 클릭 시 href경로를 지정해준다.
+
+```html
+{% if post.comment_set.exists %}
+    {% for comment in post.comment_set.iterator %}
+    <!-- Single Comment -->
+    <div class="media mb-4" id="comment-{{ comment.pk }}">
+        <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt=""/>
+        <div class="media-body">
+        {% if user.is_authenticated and comment.author == user %}
+        <a class="btn btn-sm btn-info float-right" 
+            role="button" 
+            id="comment-{{ comment.pk }}-update-btn" 
+            href="/blog/update_comment/{{ comment.pk }}/">edit</a>
+        {% endif %}
+        <h5 class="mt-0">{{ comment.author.username }} &nbsp; &nbsp; <small class="text-muted">{{ comment.created_at }}</small> </h5>
+        {{ comment.content | linebreaks }}
+        </div>
+    </div>
+    {% endfor %}
+{% endif %}
+```
+
+##### UpdateView 복습
+- 수정버튼 클릭 시 이동하는 url에 대해 수정 작업을 수행하는 코드를 추가해준다.
+
+1. tests.py의 test_comment_update함수에 다음 코드를 작성한다.
+- edit버튼 클릭 시 수정 페이지 제목이 'Edit Comment - Blog'가 되도록 작성한다.
+-**sleep** : 수정 간격이 매우 빠르기 때문에 간격을 준다.
+    → 수정시간 표시하기 위해서
+- 기존 댓글의 내용이 댓글 form안에 존재하는지 확인하고 불러온다.
+    id가 id_content인 content_textarea는 Comment모델에 content를 의미한다.
+- 댓글을 수정한 후 submit버튼을 클릭하면 수정된 내용과 수정 시간이 나타나도록 해준다.
+
+```python
+response = self.client.get('/blog/update_comment/1/')
+self.assertEqual(response.status_code, 200)
+soup = BeautifulSoup(response.content, 'html.parser')
+
+self.assertEqual('Edit Comment - Blog', soup.title.text)
+update_comment_form = soup.find('form', id='comment-form')
+content_textarea = update_comment_form.find('textarea', id='id_content')
+self.assertIn(self.comment_001.content, content_textarea.text)
+sleep(2)
+
+response = self.client.post(
+    '/blog/update_comment/1/',
+    {
+        'content': '윤주의 댓글을 수정합니다.'
+    },
+    follow=True
+)
+
+self.assertEqual(response.status_code, 200)
+soup = BeautifulSoup(response.content, 'html.parser')
+comment_001_div = soup.find('div', id='comment-1')
+self.assertIn('윤주의 댓글을 수정합니다.', comment_001_div.text)
+self.assertIn('Updated: ', comment_001_div.text)
+```
+
+2. urls.py에 url를 지정하고 대응되는 views.py 함수를 생성해준다.
+```python
+path('update_comment/<int:pk>/', views.CommentUpdate.as_view()),
+```
+
+3. views.py에 CommentUpdate함수를 생성한다.
+- 필드는 forms.py에 지정한 CommentForm을 사용한다.
+- PostUpdate 함수와 유형은 비슷하다.
+    **dispatch함수** : 로그인한 사용자 중 댓글 작성자만 수정이 가능
+```python
+class CommentUpdate(LoginRequiredMixin, UpdateView):
+    model = Comment
+    form_class = CommentForm
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and request.user == self.get_object().author:
+            return super(CommentUpdate, self).dispatch(request, *args, **kwargs)
+        else:
+            raise PermissionDenied
+```
+
+4. 댓글 수정 페이지 comment_form.html을 생성한다.
+- django에서 기본으로 제공하는 comment_form.html이므로 views.py에서 별도로 지정해주지 않아도 된다.
+```python
+ex, template_name = 'blog/comment_form.html'
+```
+
+comment_forms.html 코드는 다음과 같다.
+```html
+{% extends 'blog/base_full_with.html' %}
+{% load crispy_forms_tags %}
+{% block head_title%}Edit Comment - Blog{% endblock %}
+
+{% block main_area %}
+<h1>Edit Comment</h1>
+<hr/>
+
+<form method="POST" id="comment-form">
+    {% csrf_token %}
+    {{ form | crispy }}
+    <br/>
+    <button type="submit" class="btn btn-dark float-right">Submit</button>
+</form>    
+{% endblock%}
+```
+
+5. update된 댓글에 대해 작성시간을 업로드 해주는 함수를 추가한다.
+- models.py에 is_updated함수를 생성한다.
+- 업데이트 시간이 작성시간에 대해 1초보다 크면 수정되었다고 판단
+
+```python
+def is_updated(self):
+    return self.updated_at - self.created_at > timedelta(seconds=1)
+```
+
+6. port_detail.html에 is_updated함수를 이용하여 수정되었는지 판단
+```html
+<!-- Single Comment -->
+<div class="media mb-4" id="comment-{{ comment.pk }}">
+    <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt=""/>
+    <div class="media-body">
+        {% if user.is_authenticated and comment.author == user %}
+        <a class="btn btn-sm btn-info float-right" 
+            role="button" 
+            id="comment-{{ comment.pk }}-update-btn" 
+            href="/blog/update_comment/{{ comment.pk }}/">edit</a>
+        {% endif %}
+        <h5 class="mt-0">{{ comment.author.username }} &nbsp; &nbsp; <small class="text-muted">{{ comment.created_at }}</small> </h5>
+        {{ comment.content | linebreaks }}
+        {% if comment.is_updated %}
+           <p class="text-muted float-right">Updated: {{ comment.updated_at }}</p>
+        {% endif %}
+    </div>
+</div>
+```
