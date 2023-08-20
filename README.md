@@ -2436,3 +2436,34 @@ LOGIN_REDIRECT_URL = '/blog/'
     </a>
 </div>
 ```
+<br>
+
+### 댓글 기능 개발하기
+#### 댓글(Comment) 모델 만들기
+1. models.py에 댓글(Comment) 모델 생성하기
+- **Field** : 게시글, 작성자, 내용, 작성일, 업로드일
+- 어떤 게시글에 댓글인지 표현
+- 해당 게시글이 삭제되면 댓글도 삭제되도록 설정 → cascade
+
+```python
+class Comment(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)  
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.author}::{self.content}'
+```
+2. DB에 반영해준다.
+```shell
+$ python manage.py makemigraions
+$ python manage.py migrate
+```
+
+3. admin사이트에서 생성된 Commnet 모델을 확인하기 위해 admin.py에 다음 내용을 추가해준다.
+```python
+from .models import Post, Category, Tag, Comment
+admin.site.register(Comment)
+```
