@@ -2731,7 +2731,7 @@ self.assertIn('윤주의 댓글입니다.', new_comment_div.text)
 ```
 
 #### 댓글 수정 기능 구현하기
-##### 수정 버튼 보이기
+##### 1. 수정 버튼 보이기
 - 자신이 작성한 댓글에 대해서 수정버튼이 보이도록 작업 수행
 
 1. test.py에 test_comment_update 함수를 생성한다.
@@ -2800,7 +2800,7 @@ self.assertEqual(comment_001_update_btn.attr['href'], '/blog/update_comment/1/')
 {% endif %}
 ```
 
-##### UpdateView 복습
+##### 2. UpdateView 복습
 - 수정버튼 클릭 시 이동하는 url에 대해 수정 작업을 수행하는 코드를 추가해준다.
 
 1. tests.py의 test_comment_update함수에 다음 코드를 작성한다.
@@ -2911,4 +2911,176 @@ def is_updated(self):
         {% endif %}
     </div>
 </div>
+```
+
+#### 댓글 삭제 기능
+##### 1. 삭제 버튼 보이기
+1. 작성한 댓글을 삭제하는 버튼을 생성한다.
+- 댓글 영역에 댓글이 있는지 확인하고 해당 작성자인 경우 삭제버튼이 보이도록 지정해준다.
+- 로그인하지 않은 경우 : 두 개의 댓글에 대해서 모두 삭제버튼이 보이면 안됌
+- subin으로 로그인한 경우 : 두번째 댓글만 삭제버튼이 보여야 함
+- 삭제버튼에는 'delete'문구가 있어야 한다.
+
+```python
+# 댓글 삭제하는 버튼 생성 함수
+def test_comment_delete(self):
+    comment_by_subin = Comment.objects.create(
+        post = self.post_001,
+        author = self.user_subin,
+        content = '수빈의 댓글입니다.'
+    )
+    self.assertEqual(Comment.objects.count(), 2)
+    self.assertEqual(self.post_001.comment_set.count(), 2)
+
+    # 로그인하지 않은 상태
+    response = self.client.get(self.post_001.get_absolute_url())
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    comment_area = soup.find('div', id='comment-area')
+    self.assertFalse(comment_area.find('a', id='comment-1-delete-btn'))
+    self.assertFalse(comment_area.find('a', id='comment-2-delete-btn'))
+
+    # subin로 로그인 한 상태  
+    self.client.login(username='subin', password='cute0313')
+    response = self.client.get(self.post_001.get_absolute_url())
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    comment_area = soup.find('div', id='comment-area')
+    self.assertFalse(comment_area.find('a', id='comment-1-delete-btn'))
+    self.assertTrue(comment_area.find('a', id='comment-2-delete-btn'))
+
+    comment_002_delete_modal_btn = comment_area.find('a', id='comment-2-delete-btn')
+    self.assertIn('delete', comment_002_delete_modal_btn.text)
+```
+
+2. post_detail.html에 삭제버튼을 생성한다.
+```html
+<!-- Single Comment -->
+<div class="media mb-4" id="comment-{{ comment.pk }}">
+    <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt=""/>
+    <div class="media-body">
+        {% if user.is_authenticated and comment.author == user %}
+        <a class="btn btn-sm btn-danger float-right" 
+            role="button" 
+            id="comment-{{ comment.pk }}-delete-btn" 
+            href="/blog/update_comment/{{ comment.pk }}/">delete</a>
+        <a class="btn btn-sm btn-info float-right" 
+        role="button" 
+        id="comment-{{ comment.pk }}-update-btn" 
+        href="/blog/update_comment/{{ comment.pk }}/">edit</a>  
+        {% endif %}
+        <h5 class="mt-0">{{ comment.author.username }} &nbsp; &nbsp; <small class="text-muted">{{ comment.created_at }}</small> </h5>
+        {{ comment.content | linebreaks }}
+        {% if comment.is_updated %}
+            <p class="text-muted float-right">Updated: {{ comment.updated_at }}</p>
+        {% endif %}
+    </div>
+</div>
+```
+
+##### 2. 삭제 기능 만들기
+1. 삭제(delete)버튼을 클릭하면 삭제여부를 확인하는 모달창이 나타나도록 test코드를 작성한다.
+- 모달창의 제목에는 'Are you Sure?' 텍스트가 나타난다.
+
+```python
+self.assertEqual(
+    comment_002_delete_modal_btn.attrs['data-target'],
+    '#deleteCommentModal-2'
+)
+
+delete_comment_modal_002 = soup.find('div', id='deleteCommentModal-2')
+self.assertIn('Are you Sure?', delete_comment_modal_002.text)
+really_delete_btn_002 = delete_comment_modal_002.find('a')
+self.assertIn('Delete', really_delete_btn_002.text)
+self.assertEqual(really_delete_btn_002.attrs['href'], '/blog/delete_comment/2/')
+```
+
+2. post_detail.html에 모달창이 나타나도록 구현한다.
+- 모달은 내가 지울 수 있는 댓글이 존재하는 경우에만 발생하도록 조건을 달아준다.
+
+```html
+<!-- Single Comment -->
+<div class="media mb-4" id="comment-{{ comment.pk }}">
+    <img class="d-flex mr-3 rounded-circle" src="http://placehold.it/50x50" alt=""/>
+    <div class="media-body">
+    {% if user.is_authenticated and comment.author == user %}
+    <a class="btn btn-sm btn-danger float-right" 
+        role="button" 
+        id="comment-{{ comment.pk }}-delete-btn"
+        data-toggle="modal"
+        data-target="#deleteCommentModal-{{ comment.pk }}"
+        href="#">delete</a>
+    <a class="btn btn-sm btn-info float-right" 
+    role="button" 
+    id="comment-{{ comment.pk }}-update-btn" 
+    href="/blog/update_comment/{{ comment.pk }}/">edit</a>
+```
+
+3. 모달 창을 생성한다.
+- 취소선 : del을 이용하면 된다.
+```html
+<!--- Modal {{ comment.pk }}-->
+        <div class="modal fade" id="deleteCommentModal-{{ comment.pk }}" tabindex="-1" aria-labelledby="deleteCommentModal-{{ comment.pk }}" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="deleteCommentModal-{{ comment.pk }}">Are You Sure?</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <del>{{ comment | linebreaks  }}</del>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <a role="button" 
+                  type="button" 
+                  class="btn btn-danger" 
+                  href="/blog/delete_comment/{{ comment.pk }}/">Delete</a>
+              </div>
+            </div>
+          </div>
+        </div>
+```
+
+4. 취소 버튼 클릭시 url로 이동하여 취소 기능을 구현한다.
+- tests.py에 취소버튼 클릭시 url이동한다.
+- **follow=True** : 취소가 적용된 페이지가 나타나도록 해준다.
+→ 나타난 테스트의 제목(title)이 이전과 동일한지 확인한다.
+- 댓글은 지워진 상태이므로 댓글이 존재해서는 안된다.
+
+```python
+response = self.client.get('/blog/delete_comment/2/', follow=True)
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    self.assertIn(self.post_001.title, soup.title.text)
+    comment_area = soup.find('div', id='comment-area')
+    self.assertNotIn('수빈의 댓글입니다.', comment_area.text)
+
+    self.assertEqual(Comment.objects.count(), 1)
+    self.assertEqual(self.post_001.comment_set.count(), 1)
+```
+
+5. urls.py에 해당 취소버튼을 클릭시 이동할 url를 지정해준다.
+```python
+path('delete_comment/<int:pk>/', views.delete_comment)
+```
+
+6. veiws.py에 delete_commnet함수를 생성해준다.
+- DeleteView : django에서 제공하는 함수, 확인하는 페이지를 한번 더 가서 확인버튼을 클릭한다.
+- DeleteView대신 함수를 생성하여 적용
+```python
+def delete_comment(request, pk):
+    comment = get_object_or_404(Comment, pk=pk)
+    post = comment.post
+
+    if request.user.is_authenticated and request.user == comment.author:
+        comment.delete()
+        return redirect(post.get_absolute_url())
+    else:
+        raise PermissionDenied
 ```
