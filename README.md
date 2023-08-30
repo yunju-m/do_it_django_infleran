@@ -3274,3 +3274,56 @@ Blog
    <small class='text-muted'>{{ search_info }}</small>
 {% endif %}
 ```
+
+#### 사용자 아바타 보여주기
+1. models.py의 Comment함수에서 댓글에 대해 사용자별 이미지를 변경해주도록 작업해준다.
+- 구글로 로그인한 사용자는 구글 이미지가 나타나도록 해준다.
+- 그렇지 않은 사용자는 기본 50x50이미지가 나타난다.
+```python
+def get_avatar_url(self):
+    if self.author.socialaccount_set.exists():
+        return self.author.socialaccount_set.first().get_avatar_url()
+    else:
+        return 'http://placehold.it/50x50'
+```
+
+2. post_detail.html에 comment 이미지에 대해 get_avatar_url이 실행되도록 href경로를 변경한다.
+```html
+<!-- Single Comment -->
+<div class="media mb-4" id="comment-{{ comment.pk }}">
+    <img class="d-flex mr-3 rounded-circle" src="{{ comment.get_avatar_url }}" alt="comment.author" width="60px"/>
+```
+
+3. 아바타 이미지를 랜덤으로 설정해주는 작업을 수행해준다.
+- [Do It Django 사이트](https://doitdjango.com)에서 Avatar목록에 들어간다.
+- 로그인 후 create project 버튼을 클릭하여 website를 생성한다.
+- 생성된 url을 가져온다.
+- 이메일에 따라 이미지가 다르게 되도록 설정해준다.
+- 그밖에도 [dice bear avatars 사이트](https://www.dicebear.com/)를 참고하여 구현가능
+```python
+def get_avatar_url(self):
+    if self.author.socialaccount_set.exists():
+        return self.author.socialaccount_set.first().get_avatar_url()
+    else:
+        return f'https://doitdjango.com/avatar/id/1668/9e015aaee67819dc/svg/{self.author.email}/'
+```
+
+4. 로그인했을 때 로그인 닉네임과 옆에 이미지도 함께 나타나도록 해준다.
+- navbar.html에 이미지 내용을 추가해준다.
+```html
+<a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false">
+    {% if user.socialaccount_set.first.get_avatar_url %}
+        <img class="rounded-circle" 
+        width="25px" 
+        src="{{ user.socialaccount_set.first.get_avatar_url }}" 
+        alt="{{ user.username }}">
+        {% else %}
+        <img class="rounded-circle"
+        width="25px"
+        src="https://doitdjango.com/avatar/id/1668/9e015aaee67819dc/svg/{{ user.email }}/"
+        alt="{{ user.username }}">
+        {% endif %}
+        &nbsp;
+    {{ user.username }}
+</a>
+```
