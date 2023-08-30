@@ -757,6 +757,10 @@ $ python manage.py migrate
 #### TDD (Test Driven Development)란?
 1. 구성
 테스트 코드 작성 ➡ 기능 구현 ➡ 리팩토링
+**하나의 함수에 대해서만 검색하는 명령어**
+```shell
+$ python mange.py test (앱).tests.TestView.(함수이름)
+```
 
 2. Beautifulsoup4 설치
 - 브라우저에 구현한 내용이 제대로 표현되었는지 확인하기 위한 라이브러리
@@ -3135,5 +3139,138 @@ class PostList(ListView):
     </li>
     {% endif %}
 </ul>
+{% endif %}
+```
+
+#### 검색기능 구현하기
+##### 1. 자바스크립트 부분
+1. base.html에 검색영역(Search)에 대해 검색기능이 가능하도록 수정한다.
+- input에 id를 지정하여 어떤 검색어를 입력했는지 확인 가능하게 해준다.
+- 버튼에 클릭하면 searchPost()함수를 호출하는 기능(onclick)을 추가해준다.
+
+```html
+<div class="card mb-4">
+    <div class="card-header">Search</div>
+    <div class="card-body">
+        <div class="input-group">
+        <input id="search-input" class="form-control" type="text" placeholder="Enter search term..." aria-label="Enter search term..." aria-describedby="button-search"/>
+        <span class="input-group-append">
+            <button class="btn btn-primary" id="button-search" type="button" onclick="searchPost();">Go!</button>
+        </span>
+        </div>
+    </div>
+</div>
+```
+
+2. searchPost() 함수에 대해 정의해준다.
+- trim() : 값을 가져와서 앞뒤 공백이 있으면 제거
+- 검색어는 최소 2글자를 입력하도록 해준다.
+
+```js
+<script>
+    function searchPost(){
+        let searchValue = document.getElementById('search-input').value.trim();
+        if (searchValue.length > 1) {
+            location.href="/blog/search/" + searchValue + "/";
+        }
+        else{
+            alert('검색어(' + searchValue +')가 너무 짧습니다.');
+        }
+    }
+</script> 
+```
+
+3. Enter를 입력해도 검색버튼을 클릭했을 때와 동일하게 작동하도록 해준다.
+```js
+document.getElementById('search-input').addEventListener('keyup', function(event){
+    if (event.key == 'Enter'){
+        searchPost();
+    }
+})
+```
+
+##### 2. 백엔드 부분(장고 부분)
+1. 검색기능에 대한 테스트 코드를 작성해준다.
+- 제목에 '파이썬'이 들어간 게시물을 찾아주는 작업을 해주기위해 새로운 포스트를 생성해준다.
+```python
+# 검색 기능 함수
+def test_search(self):
+    post_about_python = Post.objects.create(
+        title='파이썬에 대한 포스트입니다.',
+        content='Hello World, We are the world',
+        author=self.user_yunju,
+    )
+
+    response = self.client.get('/blog/search/파이썬/')
+    self.assertEqual(response.status_code, 200)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    main_area = soup.find('div', id='main-area')
+
+    self.assertIn('Search: 파이썬 (1)', main_area.text)
+    self.assertNotIn(self.post_001.title, main_area.text)
+    self.assertNotIn(self.post_002.title, main_area.text)
+    self.assertNotIn(self.post_003.title, main_area.text)
+    self.assertIn(post_about_python.title, main_area.text)
+```
+
+2. urls.py에 url를 지정해준다.
+```python
+urlpatterns = [
+    path('search/<str:q>/', views.PostSearch.as_view()),
+]
+```
+
+3. views.py에 PostSearch 함수를 생성해준다.
+- PostList의 형태를 가져온다.
+- pagination 기능은 필요 없으므로 none으로 처리해준다.
+- 입력받은 검색어를 확인해주기위해 'q'변수에 가져와준다.
+- **Q** : 필터(filter)를 여러가지를 걸어야할 때 사용 
+→ 제목 or 태그에 해당 검색어가 있으면 가져온다.
+- **distinct()** : 중복된 게시물을 가져오는 것을 방지
+
+```python
+from django.db.models import Q
+
+class PostSearch(PostList):
+    paginate_by = None
+
+    def get_queryset(self):
+        q = self.kwargs['q']
+        post_list = Post.objects.filter(
+            Q(title__contains=q) | Q(tags__name__contains=q)
+        ).distinct()
+        return post_list
+```
+
+4. 검색을 하면 제목 옆에 'Search: 검색어'가 나타나도록 해주는 get_context_data함수를 생성해준다.
+- 검색어는 동일하게 q로 입력받는다.
+- 검색어와 검색된 게시물 개수를 'search_info'라는 context로 지정해주고 이는 post_list.html에 나타내면 된다.
+```python
+# 검색 기능 함수
+class PostSearch(PostList):
+    paginate_by = None
+
+    def get_queryset(self):
+        q = self.kwargs['q']
+        post_list = Post.objects.filter(
+            Q(title__contains=q) | Q(tags__name__contains=q)
+        ).distinct()
+        return post_list
+    
+    def get_context_data(self, **kwargs):
+        context = super(PostSearch, self).get_context_data()
+        q = self.kwargs['q']
+        context['search_info'] = f'Search: {q} ({self.get_queryset().count()})'
+        
+        return context
+```
+
+5. post_list.html에 'search_info'에 해당되는 내용을 추가해준다.
+- 디자인(색상, 크기)을 수정해준다.
+```html
+Blog
+{% if search_info %} 
+   <small class='text-muted'>{{ search_info }}</small>
 {% endif %}
 ```
