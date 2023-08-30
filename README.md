@@ -3084,3 +3084,56 @@ def delete_comment(request, pk):
     else:
         raise PermissionDenied
 ```
+
+### 기타 편의 기능 구현하기
+#### Pagination (페이징)
+포스트 게시물이 5개씩 출력되고 다음 페이지로 이동하는 페이징 버튼을 생성한다.
+1. views.py에 PostList 함수에 다음을 추가해준다.
+paginage_by : post(게시물)을 최대 몇 개 보여줄 것인지 결정
+
+```python
+# 리스트를 출력하는 django 기본 라이브러리
+class PostList(ListView):
+    model = Post
+    ordering = '-pk'
+    paginate_by = 5
+
+    def get_context_data(self, **kwargs):
+        context = super(PostList, self).get_context_data()
+        context['categories'] = Category.objects.all()
+        context['no_category_post_count'] = Post.objects.filter(category=None).count()
+        return context
+```
+
+2. page_list.html에 pagination 부분을 수정해준다.
+- 최대 페이지(5)보다 적으면 페이징 부분이 보이지 않도록 하는 조건을 추가해준다.(django의 post_list.html에 제공하는 기능)
+- 다음(Newer)버튼은 이전에 등록한 게시물을 보여주므로 page_obj의 이전 게시물이 존재하면 버튼을 보여준다.
+- 이전(Older)버튼은 가장 최근 등록한 게시물을 보여주므로 page_obj의 다음 게시물이 존재하면 버튼을 보여준다.
+- 해당 버튼을 클릭했을 때 다음/이전 페이지로 이동하는 url을 지정해준다.
+- 최대/최소 페이지로 이동하면 버튼 비활성화해준다.
+
+```html
+{% if is_paginated %}
+<!-- Pagination-->
+<ul class="pagination justify-content-center mb-4">
+    {% if page_obj.has_next %}
+    <li class="page-item">
+    <a class="page-link" href="?page={{ page_obj.next_page_number }}">&larr; Older</a>
+    </li>
+    {% else %}
+    <li class="page-item disabled">
+    <a class="page-link" href="#">&larr; Older</a>
+    </li>
+    {% endif %}
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Newer &rarr;</a>
+    </li>
+    {% else %}
+    <li class="page-item disabled">
+    <a class="page-link" href="#">Newer &rarr;</a>
+    </li>
+    {% endif %}
+</ul>
+{% endif %}
+```
