@@ -3327,3 +3327,208 @@ def get_avatar_url(self):
     {{ user.username }}
 </a>
 ```
+
+### 대문 페이지와 자기소개 페이지 만들기
+#### 대문 페이지 만들기
+1. 대문 페이지인 landing.html을 다음과 같이 수정한다.
+- static을 불러온다.
+- bootstrap, fontawesome 라이브러리를 header에 불러온다.
+- navbar, footer, 로그인 팝업 js를 불러온다.
+
+```html
+<!DOCTYPE html>
+{% load static%}
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"/>
+    <script src="https://kit.fontawesome.com/c85c5556f3.js"></script>
+    <title>Do It Django Inflearn</title>
+  </head>
+
+  <body>
+    {% include 'blog/navbar.html'%}
+
+    <h1>안녕하세요. 장고 개발 도전자입니다.</h1>
+    <h2>대문 페이지</h2>
+    <h3>아직 만드는 중입니다.</h3>
+
+    {% include 'blog/footer.html' %}
+    
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
+```
+
+2. 대문페이지(single_pages) 앱에 static폴더를 생성한다.
+- 배경이미지를 넣을 images 디렉토리와 css 디렉토리를 생성한다.
+
+3. landing.css에 다음과 같이 입력한다.
+```css
+body{
+    background: url('/static/single_pages/images/backgroundImg.jpg') no-repeat center center fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -background-size: cover;
+    -o-background-size: cover;
+}
+```
+
+4. landing.html의 header에 landing.css를 추가해준다.
+```html
+<link href="{% static 'single_pages/css/landing.css' %}" rel="stylesheet" type="text/css"/>
+```
+
+5. footer를 아래로 지정해주기 위해 div로 감싼다.
+```html
+<div class="fixed-bottom">
+    {% include 'blog/footer.html' %}
+</div>
+```
+
+6. 다음 화면 수정 작업을 수행한다.
+- 왼쪽에 치우쳐진 제목을 오른쪽으로 이동시킨다.
+- 컬럼을 나누어 준다.
+- **text-light**: 글씨체를 하얗게 바꾸어준다.
+- **mt-1** : margin을 넣어준다.
+- 각 최근 포스트에 대한 카드를 넣어준다.
+```html
+<section>
+<div class="container">
+    <div class="row justify-content-between mt-4">
+    <div class="col-lg-6 text-light">
+        <h1>Do It! Django + Inflearn</h1>
+        <p>파이썬 진영의 가장 대표적인 웹 프레임워크 Django로 여러분의 블로그 사이트를 만들어보세요.</p>
+    </div>
+    <div class="col-lg-5">
+        <h2 class="text-light">Blog - Recent posts</h2>
+        <div class="card mt-1">
+        <div class="card-body">
+            가장 최근 포스트 내용
+        </div>
+        </div>
+        <div class="card mt-1">
+        <div class="card-body">
+            포스트 2 내용
+        </div>
+        </div>
+        <div class="card mt-1">
+        <div class="card-body">
+            포스트 3 내용
+        </div>
+        </div>
+    </div>
+    </div>
+</div>
+</section>
+```
+
+7. 가장 최근 포스트에 내용이 카드에 들어가도록 test코드를 작성한다.
+- 이전 blog앱의 test코드와 동일하게 시작한다.
+- 사용자, 포스트 4개를 생성한다.
+- 이때, 첫 번째 포스트는 보이지 않고 2, 3, 4 포스트는 보여야한다.
+```python
+from django.test import Client, TestCase
+from django.contrib.auth.models import User
+from blog.models import Post
+from bs4 import BeautifulSoup
+
+class TestView(TestCase):
+    def setUp(self):
+        self.client = Client()
+        # 사용자 생성
+        self.user_yunju = User.objects.create_user(
+            username='yunju',
+            password='0129'
+        )
+    def test_landing(self):
+        post_001 = Post.objects.create(
+            title = '첫 번째 포스트',
+            content = '첫 번째 포스트입니다.',
+            author = self.user_yunju 
+        )
+        post_002 = Post.objects.create(
+            title = '두 번째 포스트',
+            content = '두 번째 포스트입니다.',
+            author = self.user_yunju 
+        )
+        post_003 = Post.objects.create(
+            title = '세 번째 포스트',
+            content = '세 번째 포스트입니다.',
+            author = self.user_yunju 
+        )
+        post_004 = Post.objects.create(
+            title = '네 번째 포스트',
+            content = '네 번째 포스트입니다.',
+            author = self.user_yunju 
+        )
+
+        response = self.client.get('')
+        self.assertEqual(response.status_code, 200)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        body = soup.body
+        self.assertNotIn(post_001.title, body.text)
+        self.assertIn(post_002.title, body.text)
+        self.assertIn(post_003.title, body.text)
+        self.assertIn(post_004.title, body.text)
+```
+
+8. 최근 post를 가져오기위해 views.py의 landing함수를 수정한다.
+- 최근 게시물 3개만 가져오도록 한다.
+
+```python
+def landing(request):
+    recent_posts = Post.objects.order_by('-pk')[:3]
+    return render(
+        request,
+        'single_pages/landing.html',
+        {
+            'recent_posts': recent_posts,
+        }
+    )
+```
+
+- landing.html에 해당 최근 post를 출력해준다.
+
+```html
+<div class="col-lg-5">
+    <h2 class="text-light">Blog - Recent posts</h2>
+    {% for post in recent_posts %}
+    <div class="card mt-1">
+        <div class="card-body">
+            <h6>{{ post.title }}</h6>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+```
+
+9. 포스트에 다음 내용을 추가해준다.
+- 작성자와 작성일을 표기한다.
+- 작성자의 이미지를 함께 출력한다.
+- blog앱의 models.py에 Post함수에 사용자 이미지를 나타내는 get_avatar_url함수를 복붙해준다.
+- landing.html에 사용자 이미지를 출력해준다.
+
+```html
+{% for post in recent_posts %}
+<div class="card mt-1">
+    <div class="card-body">
+        <h6><a href="{{ post.get_absolute_url }}" class="text-decoration-none text-dark">{{ post.title }}</a></h6>
+        <div class="float-right">
+            <img class="mr-1 rounded-circle" width="20px" src="{{ post.get_avatar_url }}" alt="{{ post.author }}">
+            {{ post.author.username }}
+            &nbsp;&nbsp;
+            {{ post.created_at }}
+        </div>
+    </div>
+</div>
+{% endfor %}
+```
+
+- 배경색을 반투명하게 표시한다.
+```css
+
+```
