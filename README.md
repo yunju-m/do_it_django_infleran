@@ -3530,5 +3530,172 @@ def landing(request):
 
 - 배경색을 반투명하게 표시한다.
 ```css
+.card{
+    background: rgba(255, 255, 255, 0.7);
+}
+```
 
+#### 자기소개 페이지 만들기
+1. 자기소개 페이지 내용을 넣는다.
+- 설명 페이지와 이미지를 8:4비율로 컬럼을 지정하고 이미지를 넣는다.
+```html
+<section>
+<div class="container mt-4">
+    <div class="row">
+    <div class="col-lg-8">
+        <h1>안녕하세요. Yunju입니다.</h1>
+        <br/>
+        <p class="lead">풀스택 개발자가 되기 위해 열심히 공부중입니다. <br/>
+        집에서 개발하며 유튜브 보는 것을 좋아합니다.
+        </p>
+        <ul>
+        <li>Work Experience</li>
+        <ul>
+            <li>Do it django</li>
+            <li>노마드코더</li>
+        </ul>
+        <li>School</li>
+        <ul>
+            <li>강원대학교 컴퓨터 공학과</li>
+        </ul>
+        </ul>
+    </div>
+    <div class="col-lg-4">
+        <img class="img-fluid" src="{% static 'single_pages/images/my_backimg.jpg' %}">        
+    </div>
+    </div>
+</div>
+</section>
+```
+2. Portfolio 내용을 추가해준다.
+- 해당 포트폴리오 내용을 클릭하면 모달창이 나타나도록 구현해준다.
+```html
+<section class="bg-light margin-for-footer">
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <h1>PORTFOLIO</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card" data-toggle="modal" data-target="#catchirus">
+                <img class="card-img-top" src="{% static 'single_pages/images/catchirus.png' %}">
+                <div class="card-body">
+                    <h5 class="card-title">Catchirus 악성 앱 백신 웹 페이지</h5>
+                    <p>python, django를 이용하여 구현</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card" data-toggle="modal" data-target="#doitdjango">
+                <img class="card-img-top" src="{% static 'single_pages/images/doitdjango.png' %}">
+                <div class="card-body">
+                    <h5 class="card-title">Django를 이용한 자기소개 페이지</h5>
+                    <p>python, django를 이용하여 구현</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card" data-toggle="modal" data-target="#k_honbab">
+                <img class="card-img-top" src="{% static 'single_pages/images/k_honbab.png' %}">
+                <div class="card-body">
+                    <h5 class="card-title">SpringBoot를 이용한 혼밥은 시로시로 페이지</h5>
+                    <p>Springboot을 이용하여 단체주문고객을 구하는 웹 페이지 </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+  </section>
+```
+3. 각 모달 내용을 구현한다.
+- id는 고유값을 지니도록 수정 필요
+- 모달1에 해당하는 내용
+```html
+<!-- Modal 1 -->
+<div class="modal fade" id="catchirus" tabindex="-1" aria-labelledby="cathirusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="cathirusModalLabel">Catchirus 악성 앱 백신 웹 페이지</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+            <div class="col-lg-7">
+                <img class="img-fluid" src="{% static 'single_pages/images/catchirus.png' %}">
+            </div>
+            <div class="col-lg-5">
+                <p>python, django를 이용하여 구현</p>
+            </div>
+            </div> 
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+        </div>
+    </div>
+</div>
+```
+- 모달2에 해당하는 내용
+```html
+<!-- Modal 2 -->
+<div class="modal fade" id="doitdjango" tabindex="-1" aria-labelledby="doitdjangoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="doitdjangoModalLabel">Django를 이용한 자기소개 페이지</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+            <div class="col-lg-7">
+                <img class="img-fluid" src="{% static 'single_pages/images/doitdjango.png' %}">
+            </div>
+            <div class="col-lg-5">
+                <p>python, django를 이용하여 구현</p>
+            </div>
+            </div> 
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+        </div>
+    </div>
+</div>
+```
+
+- 모달3에 해당하는 내용
+```html
+<!-- Modal 3 -->
+<div class="modal fade" id="k_honbab" tabindex="-1" aria-labelledby="k_honbabModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="k_honbabModalLabel">SpringBoot를 이용한 혼밥은 시로시로 페이지</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+            <div class="col-lg-7">
+                <img class="img-fluid" src="{% static 'single_pages/images/k_honbab.png' %}">
+            </div>
+            <div class="col-lg-5">
+                <p>Springboot을 이용하여 단체주문고객을 구하는 웹 페이지 </p>
+            </div>
+            </div> 
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+        </div>
+    </div>
+</div>
 ```
