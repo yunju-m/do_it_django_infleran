@@ -40,7 +40,7 @@ class Post(models.Model):
     updated_at = models.DateTimeField(auto_now=True)        
     
     author = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)       
-    category = models.ForeignKey(Category, null=True, on_delete=models.SET_NULL)
+    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL)
     tags = models.ManyToManyField(Tag, blank=True)
 
     ## django admin의 게시물 이름 설정
