@@ -180,3 +180,6 @@ SUMMERNOTE_CONFIG = {
         'height': '480',
     }
 }
+
+CSRF_TRUSTED_ORIGINS = ['https://*.yunjublog.com','https://*.127.0.0.1']
+ACCOUNT_DEFAULT_HTTP_PROTOCOL='https'
