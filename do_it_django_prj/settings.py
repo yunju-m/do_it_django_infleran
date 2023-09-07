@@ -50,12 +50,11 @@ INSTALLED_APPS = [
 
     "crispy_forms",
     "crispy_bootstrap4",
-
     "markdownx",
+    'django_summernote',
     
     "blog",
     "single_pages",
-
     "board",
 ]
 
@@ -167,3 +166,6 @@ ACOOUNT_EMAIL_VERIFICATION = 'none'
 
 # 로그인 성공시 이동할 url 설정
 LOGIN_REDIRECT_URL = '/blog/'
+
+# django_summernote 설정 
+X_FRAME_OPTIONS = 'SAMEORIGIN'
