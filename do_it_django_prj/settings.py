@@ -169,3 +169,14 @@ LOGIN_REDIRECT_URL = '/blog/'
 
 # django_summernote 설정 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+# summernote 테마 Bootstrap4 설정
+SUMMERNOTE_THEME = 'bs4'  
+
+SUMMERNOTE_CONFIG = {
+    'summernote': {
+        # Change editor size
+        'width': '100%',
+        'height': '480',
+    }
+}
